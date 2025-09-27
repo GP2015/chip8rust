@@ -55,7 +55,7 @@ render_occasion = "on changes"
 
 # The frequency at which to render the framebuffer to the screen.
 # Only applicable if not rendering at constant frequency (i.e. render_occasion = "frequency").
-render_frequency = 60.0
+render_frequency = 60
 
 
 # --- RAM settings ---
@@ -98,24 +98,22 @@ font_data = [
 
 # The rate at which to decrement the delay timer (in Hz).
 # This should be 60 Hz for most programs.
-delay_timer_decrement_rate = 60.0
+delay_timer_decrement_rate = 60
 
 # The rate at which to decrement the sound timer (in Hz).
 # This should be 60 Hz for most programs.
-sound_timer_decrement_rate = 60.0
+sound_timer_decrement_rate = 60
 
 
 # --- Input Settings ---
 
-# THE BELOW DESCRIPTION MAKES ZEROO SENSE
-
-# The keybindings for each of the 16 inputs (labelled in hexadecimal)
-# These are in the order of the original hexadecimal keys on the keyboard. 
+# The keybindings for each of the 16 inputs.
+# These are ordered by the original keypad's hexadecimal naming convention.
 key_bindings = [
-    "1", "2", "3",
-    "q", "w", "e",
-    "a", "s", "d",
-         "x",
-    "z",      "c",
-    "4", "r", "f", "v"
+    '1', '2', '3',
+    'q', 'w', 'e',
+    'a', 's', 'd',
+         'x',
+    'z',      'c',
+    '4', 'r', 'f', 'v'
 ]

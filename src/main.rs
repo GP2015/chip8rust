@@ -1,12 +1,18 @@
-mod comps;
 mod config;
 mod cpu;
+mod emulib;
 mod gpu;
 mod input;
+mod instructions;
 mod ram;
 mod timer;
 
+use crate::cpu::CPU;
+use crate::ram::RAM;
 use clap::Parser;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+use std::thread;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -24,15 +30,20 @@ fn main() {
         return;
     };
 
-    let components = comps::Components {
-        config: config,
-        ram: ram::RAM::new(),
-    };
+    let active = Arc::new(AtomicBool::new(true));
 
-    if !components.ram.load_program(&args.program_path) {
-        eprintln!("Program terminated with error.");
+    let config = Arc::new(config);
+    let ram = Arc::new(RAM::new(active.clone(), config.clone()));
+    let cpu = Arc::new(CPU::new(active.clone(), config.clone(), ram.clone()));
+
+    if !ram.load_program(&args.program_path) {
+        eprintln!("Emulator terminated with error.");
         return;
     }
+
+    let cpu_handle = thread::spawn(move || cpu.run());
+
+    cpu_handle.join().unwrap();
 
     println!("Stopping emulator...")
 }

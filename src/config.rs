@@ -9,35 +9,35 @@ const CONFIG_FILE_PATH: &str = "config.toml";
 #[derive(Deserialize)]
 pub struct Config {
     // CPU Settings:
-    instructions_per_second: usize,
-    use_new_shift_instruction: bool,
-    use_new_jump_instruction: bool,
-    set_flag_for_index_overflow: bool,
-    move_index_with_reads: bool,
-    use_true_randomness: bool,
-    fake_randomness_seed: u64,
-    allow_program_counter_overflow: bool,
+    pub instructions_per_second: f64,
+    pub use_new_shift_instruction: bool,
+    pub use_new_jump_instruction: bool,
+    pub set_flag_for_index_overflow: bool,
+    pub move_index_with_reads: bool,
+    pub use_true_randomness: bool,
+    pub fake_randomness_seed: u64,
+    pub allow_program_counter_overflow: bool,
 
     // GPU Settings:
-    horizontal_resolution: usize,
-    vertical_resolution: usize,
-    wrap_pixels: bool,
-    render_occasion: String,
-    render_frequency: f64,
+    pub horizontal_resolution: usize,
+    pub vertical_resolution: usize,
+    pub wrap_pixels: bool,
+    pub render_occasion: String,
+    pub render_frequency: f64,
 
     // RAM Settings:
-    font_start_index_on_heap: u16,
-    stack_size: usize,
-    allow_stack_overflow: bool,
+    pub font_start_index_on_heap: u16,
+    pub stack_size: usize,
+    pub allow_stack_overflow: bool,
     #[serde_as(as = "[_; 80]")]
-    font_data: [u8; 80],
+    pub font_data: [u8; 80],
 
     // Timer settings:
-    delay_timer_decrement_rate: f64,
-    sound_timer_decrement_rate: f64,
+    pub delay_timer_decrement_rate: f64,
+    pub sound_timer_decrement_rate: f64,
 
     // Input Settings:
-    key_bindings: [String; 16],
+    pub key_bindings: [String; 16],
 }
 
 pub fn generate_config() -> Option<Config> {
