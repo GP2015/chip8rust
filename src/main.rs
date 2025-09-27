@@ -24,7 +24,7 @@ fn main() {
         return;
     };
 
-    let mut components = comps::Components {
+    let components = comps::Components {
         config: config,
         ram: ram::RAM::new(),
     };
