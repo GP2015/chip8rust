@@ -14,9 +14,9 @@ pub struct Config {
     pub use_new_jump_instruction: bool,
     pub set_flag_for_index_overflow: bool,
     pub move_index_with_reads: bool,
+    pub allow_program_counter_overflow: bool,
     pub use_true_randomness: bool,
     pub fake_randomness_seed: u64,
-    pub allow_program_counter_overflow: bool,
 
     // GPU Settings:
     pub horizontal_resolution: usize,
@@ -26,9 +26,10 @@ pub struct Config {
     pub render_frequency: f64,
 
     // RAM Settings:
-    pub font_start_index_on_heap: u16,
     pub stack_size: usize,
     pub allow_stack_overflow: bool,
+    pub allow_heap_overflow: bool,
+    pub font_start_index_on_heap: u16,
     #[serde_as(as = "[_; 80]")]
     pub font_data: [u8; 80],
 
@@ -52,4 +53,14 @@ pub fn generate_config() -> Option<Config> {
     };
 
     return Some(config);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_config() {
+        let _ = generate_config().unwrap();
+    }
 }

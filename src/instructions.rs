@@ -5,11 +5,11 @@ pub struct Opcode {
 }
 
 impl Opcode {
-    pub fn new_u16(full: u16) -> Self {
+    pub fn from_u16(full: u16) -> Self {
         Self { full }
     }
 
-    pub fn new_u8s(high: u8, low: u8) -> Self {
+    pub fn from_u8s(high: u8, low: u8) -> Self {
         Self {
             full: (u16::from(high) << 8) | u16::from(low),
         }

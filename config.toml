@@ -21,6 +21,10 @@ set_flag_for_index_overflow = true
 # Most programs keep the register static (if so, set this to false).
 move_index_with_reads = false
 
+# Whether to allow the program counter to overflow.
+# Doesn't matter either way to most programs.
+allow_program_counter_overflow = true
+
 # Whether to use true randomness for the random instruction (i.e. seeds to a random value each time).
 # Setting this to true will cause a different output each time.
 use_true_randomness = false
@@ -29,9 +33,7 @@ use_true_randomness = false
 # Only applicable if not using true randomness (i.e. use_true_randomness = false).
 fake_randomness_seed = 0
 
-# Whether to allow the program counter to overflow.
-# Doesn't matter either way to most programs.
-allow_program_counter_overflow = true
+
 
 
 # --- GPU settings ---
@@ -60,10 +62,6 @@ render_frequency = 60
 
 # --- RAM settings ---
 
-# The index that the font data begins at, on the heap.
-# Any number from 0x0 to 0x1b0 (inclusive) works, but above that will cause issues in most programs.
-font_start_index_on_heap = 0x50
-
 # The maximum size of the stack.
 # 16 is the standard value for most programs.
 stack_size = 16
@@ -71,6 +69,14 @@ stack_size = 16
 # Whether to allow the stack to overflow or not.
 # Doesn't matter either way to most programs.
 allow_stack_overflow = true
+
+# Whether to allow memory reads and writes to overflow.
+ # Doesn't matter either way to most programs.
+allow_heap_overflow = true
+
+# The index that the font data begins at, on the heap.
+# Any number from 0x0 to 0x1b0 (inclusive) works, but above that will cause issues in most programs.
+font_start_index_on_heap = 0x50
 
 # Byte representation of all the hexadecimal numbers.
 # Each number has 5 bytes associated with it.

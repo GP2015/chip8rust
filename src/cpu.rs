@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::emulib::Limiter;
-use crate::instructions::{InstructionFunction, Opcode, get_instruction_function};
+use crate::instructions::{self, InstructionFunction, Opcode, get_instruction_function};
 use crate::ram::{HEAP_SIZE, PROGRAM_START_INDEX, RAM};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -47,18 +47,18 @@ impl CPU {
     fn fetch_instruction(&self) -> Option<Opcode> {
         let mut pc = self.pc.lock().unwrap();
 
-        let Some(instruction) = self.ram.get_instruction(*pc) else {
-            return None;
-        };
-
         if *pc >= 0xFFE && !self.config.allow_program_counter_overflow {
             eprintln!("Error: Program counter overflowed.");
             return None;
         }
 
+        let Some(instruction_bytes) = self.ram.read_bytes(*pc, 2) else {
+            return None;
+        };
+
         *pc = (*pc + 2) % 0x1000;
 
-        return Some(Opcode::new_u16(instruction));
+        return Some(Opcode::from_u8s(instruction_bytes[0], instruction_bytes[1]));
     }
 
     fn decode_instruction(&self, instruction: &Opcode) -> Option<InstructionFunction> {
