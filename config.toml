@@ -1,5 +1,6 @@
 
 # --- CPU settings ---
+[cpu]
 
 # The number of instructions to execute per second.
 # Any value works, but 700 is often recommended.
@@ -37,6 +38,7 @@ fake_randomness_seed = 0
 
 
 # --- GPU settings ---
+[gpu]
 
 # The amount of pixels on the horizontal axis.
 # 64 in the CHIP-8; 128 in the SUPER-CHIP-8.
@@ -61,6 +63,7 @@ render_frequency = 60
 
 
 # --- RAM settings ---
+[ram]
 
 # The maximum size of the stack.
 # 16 is the standard value for most programs.
@@ -101,6 +104,7 @@ font_data = [
 
 
 # --- Timer Settings ---
+[timer]
 
 # The rate at which to decrement the delay timer (in Hz).
 # This should be 60 Hz for most programs.
@@ -112,6 +116,7 @@ sound_timer_decrement_rate = 60
 
 
 # --- Input Settings ---
+[input]
 
 # The keybindings for each of the 16 inputs.
 # These are ordered by the original keypad's hexadecimal naming convention.

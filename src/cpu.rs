@@ -1,13 +1,13 @@
-use crate::config::Config;
+use crate::config::CPUConfig;
 use crate::emulib::Limiter;
-use crate::instructions::{self, InstructionFunction, Opcode, get_instruction_function};
-use crate::ram::{HEAP_SIZE, PROGRAM_START_INDEX, RAM};
+use crate::instructions::{InstructionFunction, Opcode, get_instruction_function};
+use crate::ram::{PROGRAM_START_INDEX, RAM};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 pub struct CPU {
     pub active: Arc<AtomicBool>,
-    pub config: Arc<Config>,
+    pub config: Arc<CPUConfig>,
     pub ram: Arc<RAM>,
     pub pc: Mutex<u16>,
     pub index: Mutex<u16>,
@@ -15,7 +15,7 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn new(active: Arc<AtomicBool>, config: Arc<Config>, ram: Arc<RAM>) -> Self {
+    pub fn new(active: Arc<AtomicBool>, config: Arc<CPUConfig>, ram: Arc<RAM>) -> Self {
         Self {
             active,
             config,

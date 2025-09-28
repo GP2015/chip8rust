@@ -25,16 +25,15 @@ fn main() {
 
     let args = Args::parse();
 
-    let Some(config) = config::generate_config() else {
+    let Some(config) = config::generate_configs() else {
         eprintln!("Emulator terminated with error.");
         return;
     };
 
     let active = Arc::new(AtomicBool::new(true));
 
-    let config = Arc::new(config);
-    let ram = Arc::new(RAM::new(active.clone(), config.clone()));
-    let cpu = Arc::new(CPU::new(active.clone(), config.clone(), ram.clone()));
+    let ram = Arc::new(RAM::new(active.clone(), Arc::new(config.ram)));
+    let cpu = Arc::new(CPU::new(active.clone(), Arc::new(config.cpu), ram.clone()));
 
     if !ram.load_program(&args.program_path) {
         eprintln!("Emulator terminated with error.");
