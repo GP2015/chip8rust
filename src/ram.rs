@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::config::RAMConfig;
 use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -8,18 +8,18 @@ pub const HEAP_SIZE: usize = 0x1000;
 
 pub struct RAM {
     active: Arc<AtomicBool>,
-    config: Arc<Config>,
+    config: Arc<RAMConfig>,
     heap: Mutex<[u8; HEAP_SIZE]>,
     stack: Mutex<Vec<u16>>,
     stack_ptr: Mutex<usize>,
 }
 
 impl RAM {
-    pub fn new(active: Arc<AtomicBool>, config: Arc<Config>) -> Self {
+    pub fn new(active: Arc<AtomicBool>, config: Arc<RAMConfig>) -> Self {
         Self {
             active,
             heap: Mutex::new([0; HEAP_SIZE]),
-            stack: Mutex::new(Vec::with_capacity(config.stack_size)),
+            stack: Mutex::new(vec![0; config.stack_size]),
             stack_ptr: Mutex::new(0),
             config,
         }
@@ -75,6 +75,7 @@ impl RAM {
 
         let mut heap = self.heap.lock().unwrap();
         heap[addr..addr + count].copy_from_slice(&vals);
+
         return true;
     }
 
@@ -120,54 +121,67 @@ impl RAM {
             }
 
             let mut stack = self.stack.lock().unwrap();
+            stack[0] = val;
+            *stack_ptr = 1;
+
+            return true;
         }
 
-        // return true;
+        let mut stack = self.stack.lock().unwrap();
+        stack[*stack_ptr] = val;
+        *stack_ptr += 1;
+
+        return true;
+    }
+
+    pub fn pop_from_stack(&self) -> Option<u16> {
+        let mut stack_ptr = self.stack_ptr.lock().unwrap();
+
+        if *stack_ptr == 0 {
+            if !self.config.allow_stack_overflow {
+                eprintln!("Error: Stack overflowed while popping.");
+                self.active.store(false, Ordering::Relaxed);
+                return None;
+            }
+
+            let stack = self.stack.lock().unwrap();
+            *stack_ptr = self.config.stack_size - 1;
+            return Some(stack[*stack_ptr]);
+        }
+
+        let stack = self.stack.lock().unwrap();
+        *stack_ptr -= 1;
+        return Some(stack[*stack_ptr]);
     }
 }
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
 
-    fn create_test_config() -> Config {
-        Config {
-            instructions_per_second: 0.0,
-            use_new_shift_instruction: false,
-            use_new_jump_instruction: false,
-            set_flag_for_index_overflow: false,
-            move_index_with_reads: false,
-            allow_program_counter_overflow: false,
-            use_true_randomness: false,
-            fake_randomness_seed: 0,
-
-            // GPU Settings:
-            horizontal_resolution: 0,
-            vertical_resolution: 0,
-            wrap_pixels: false,
-            render_occasion: String::from(""),
-            render_frequency: 0.0,
-
-            // RAM Settings:
+    fn test_config_liberal() -> RAMConfig {
+        RAMConfig {
             stack_size: 16,
             allow_stack_overflow: true,
             allow_heap_overflow: true,
             font_start_index_on_heap: 0,
             font_data: [0; 80],
+        }
+    }
 
-            // Timer settings:
-            delay_timer_decrement_rate: 0.0,
-            sound_timer_decrement_rate: 0.0,
-
-            // Input Settings:
-            key_bindings: [String::from("").clone(); 16],
+    fn test_config_conservative() -> RAMConfig {
+        RAMConfig {
+            stack_size: 16,
+            allow_stack_overflow: false,
+            allow_heap_overflow: false,
+            font_start_index_on_heap: 0,
+            font_data: [0; 80],
         }
     }
 
     #[test]
     fn test_read_write_byte_to_memory() {
-        let config = Arc::new(config::generate_config().unwrap());
+        let config = Arc::new(test_config_conservative());
         let active = Arc::new(AtomicBool::new(true));
         let ram = Arc::new(RAM::new(active, config));
 
@@ -182,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_read_bytes_from_memory() {
-        let config = Arc::new(config::generate_config().unwrap());
+        let config = Arc::new(test_config_conservative());
         let active = Arc::new(AtomicBool::new(true));
         let ram = Arc::new(RAM::new(active, config));
 
@@ -200,14 +214,14 @@ mod tests {
 
     #[test]
     fn test_write_bytes_to_memory() {
-        let config = Arc::new(config::generate_config().unwrap());
+        let config = Arc::new(test_config_conservative());
         let active = Arc::new(AtomicBool::new(true));
         let ram = Arc::new(RAM::new(active, config));
 
         let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
         let start_addr: u16 = 0x789;
 
-        ram.write_bytes(&ideal_bytes, start_addr);
+        assert!(ram.write_bytes(&ideal_bytes, start_addr));
 
         let mut actual_bytes: Vec<u8> = Vec::new();
 
@@ -222,21 +236,132 @@ mod tests {
     #[test]
     fn test_load_program_to_memory() {
         let program = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
-        let program_path = String::from("test.txt");
+        let program_path = String::from("test_load_program_to_memory_temp_file.txt");
         fs::write(&program_path, &program).unwrap();
 
-        let config = Arc::new(config::generate_config().unwrap());
+        let config = Arc::new(test_config_conservative());
         let active = Arc::new(AtomicBool::new(true));
         let ram = Arc::new(RAM::new(active, config));
 
-        ram.load_program(&program_path);
+        assert!(ram.load_program(&program_path));
+
+        fs::remove_file(program_path).unwrap();
 
         let ideal_bytes = vec![0x00, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x00];
-        let actual_bytes = ram.read_bytes(ram::PROGRAM_START_INDEX - 1, 7).unwrap();
+        let actual_bytes = ram.read_bytes(PROGRAM_START_INDEX - 1, 7).unwrap();
 
         assert_eq!(ideal_bytes, actual_bytes);
     }
 
     #[test]
-    fn test_read_memory_with_overflow() {}
+    fn test_read_memory_with_successful_overflow() {
+        let config = Arc::new(test_config_liberal());
+        let active = Arc::new(AtomicBool::new(true));
+        let ram = Arc::new(RAM::new(active, config));
+
+        let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
+
+        assert!(ram.write_bytes(&ideal_bytes[..3].to_vec(), 0xFFD));
+        assert!(ram.write_bytes(&ideal_bytes[3..].to_vec(), 0x000));
+
+        let actual_bytes = ram.read_bytes(0xFFD, 5).unwrap();
+
+        assert_eq!(ideal_bytes, actual_bytes);
+    }
+
+    #[test]
+    fn test_read_memory_with_failed_overflow() {
+        let config = Arc::new(test_config_conservative());
+        let active = Arc::new(AtomicBool::new(true));
+        let ram = Arc::new(RAM::new(active, config));
+
+        let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
+
+        assert!(ram.write_bytes(&ideal_bytes[..3].to_vec(), 0xFFD));
+        assert!(ram.write_bytes(&ideal_bytes[3..].to_vec(), 0x000));
+
+        assert!(ram.read_bytes(0xFFD, 5).is_none());
+    }
+
+    #[test]
+    fn test_write_memory_with_successful_overflow() {
+        let config = Arc::new(test_config_liberal());
+        let active = Arc::new(AtomicBool::new(true));
+        let ram = Arc::new(RAM::new(active, config));
+
+        let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
+
+        assert!(ram.write_bytes(&ideal_bytes, 0xFFD));
+
+        let mut actual_bytes: Vec<u8> = Vec::with_capacity(5);
+        actual_bytes.extend(ram.read_bytes(0xFFD, 3).unwrap());
+        actual_bytes.extend(ram.read_bytes(0x000, 2).unwrap());
+
+        assert_eq!(ideal_bytes, actual_bytes);
+    }
+
+    #[test]
+    fn test_write_memory_with_failed_overflow() {
+        let config = Arc::new(test_config_conservative());
+        let active = Arc::new(AtomicBool::new(true));
+        let ram = Arc::new(RAM::new(active, config));
+
+        let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
+
+        assert!(!ram.write_bytes(&ideal_bytes, 0xFFD));
+    }
+
+    #[test]
+    fn test_stack_push_pop() {
+        let config = Arc::new(test_config_conservative());
+        let active = Arc::new(AtomicBool::new(true));
+        let ram = Arc::new(RAM::new(active, config));
+
+        for i in 1..=5 {
+            assert!(ram.push_to_stack(i));
+        }
+
+        for i in (1..=5).rev() {
+            assert_eq!(i, ram.pop_from_stack().unwrap());
+        }
+    }
+
+    #[test]
+    fn test_stack_push_pop_with_successful_overflow() {
+        let config = Arc::new(test_config_liberal());
+        let active = Arc::new(AtomicBool::new(true));
+        let ram = Arc::new(RAM::new(active, config));
+
+        for i in 1..=20 {
+            assert!(ram.push_to_stack(i));
+        }
+
+        for i in (5..=20).rev() {
+            assert_eq!(i, ram.pop_from_stack().unwrap());
+        }
+
+        assert_eq!(20, ram.pop_from_stack().unwrap());
+    }
+
+    #[test]
+    fn test_stack_push_with_failed_overflow() {
+        let config = Arc::new(test_config_conservative());
+        let active = Arc::new(AtomicBool::new(true));
+        let ram = Arc::new(RAM::new(active, config));
+
+        for i in 1..=16 {
+            assert!(ram.push_to_stack(i));
+        }
+
+        assert!(!ram.push_to_stack(17));
+    }
+
+    #[test]
+    fn test_stack_pop_with_failed_overflow() {
+        let config = Arc::new(test_config_conservative());
+        let active = Arc::new(AtomicBool::new(true));
+        let ram = Arc::new(RAM::new(active, config));
+
+        assert!(ram.pop_from_stack().is_none());
+    }
 }
