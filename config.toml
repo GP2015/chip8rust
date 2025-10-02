@@ -35,8 +35,6 @@ use_true_randomness = false
 fake_randomness_seed = 0
 
 
-
-
 # --- GPU settings ---
 [gpu]
 
@@ -79,7 +77,7 @@ allow_heap_overflow = true
 
 # The index that the font data begins at, on the heap.
 # Any number from 0x0 to 0x1b0 (inclusive) works, but above that will cause issues in most programs.
-font_start_index_on_heap = 0x50
+font_starting_address = 0x50
 
 # Byte representation of all the hexadecimal numbers.
 # Each number has 5 bytes associated with it.
@@ -103,12 +101,16 @@ font_data = [
 ]
 
 
-# --- Timer Settings ---
-[timer]
+# --- Delay Timer Settings ---
+[delay_timer]
 
 # The rate at which to decrement the delay timer (in Hz).
 # This should be 60 Hz for most programs.
 delay_timer_decrement_rate = 60
+
+
+# --- Sound Timer Settings ---
+[sound_timer]
 
 # The rate at which to decrement the sound timer (in Hz).
 # This should be 60 Hz for most programs.
