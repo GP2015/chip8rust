@@ -3,8 +3,6 @@ use serde_with::serde_as;
 use std::fs;
 use toml;
 
-use crate::gpu;
-
 const CONFIG_FILE_PATH: &str = "config.toml";
 
 #[serde_as]

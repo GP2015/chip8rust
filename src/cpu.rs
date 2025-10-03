@@ -4,7 +4,8 @@ use crate::instructions::{InstructionFunction, Opcode, get_instruction_function}
 use crate::ram::{PROGRAM_START_ADDRESS, RAM};
 use crate::timer::{DelayTimer, SoundTimer};
 use fastrand;
-use std::ops::Range;
+use std::ops::{Bound, RangeBounds};
+use std::slice::SliceIndex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -145,15 +146,21 @@ impl CPU {
         function(&self, &instruction);
     }
 
-    pub fn get_pc_ref(&self) -> MutexGuard<u16> {
+    pub fn get_pc_ref(&self) -> MutexGuard<'_, u16> {
         return self.pc.lock().unwrap();
     }
 
-    pub fn get_pc(&self) -> u16 {
-        return *self.pc.lock().unwrap();
-    }
+    // pub fn get_pc(&self) -> u16 {
+    //     return *self.pc.lock().unwrap();
+    // }
 
     pub fn set_pc(&self, value: u16) {
+        if cfg!(debug_assertions) && value > 0xFFF {
+            panic!(
+                "Error: Should not be possible to manually set program counter outside address space."
+            );
+        }
+
         *self.pc.lock().unwrap() = value;
     }
 
@@ -170,7 +177,7 @@ impl CPU {
         return true;
     }
 
-    pub fn get_index_reg_ref(&self) -> MutexGuard<u16> {
+    pub fn get_index_reg_ref(&self) -> MutexGuard<'_, u16> {
         return self.index.lock().unwrap();
     }
 
@@ -179,32 +186,79 @@ impl CPU {
     }
 
     pub fn set_index_reg(&self, value: u16) {
+        if cfg!(debug_assertions) && value > 0xFFF {
+            panic!(
+                "Error: Should not be possible to manually set index register outside address space."
+            );
+        }
+
         *self.index.lock().unwrap() = value;
     }
 
-    pub fn get_v_regs_ref(&self) -> MutexGuard<[u8; 16]> {
+    pub fn get_v_regs_ref(&self) -> MutexGuard<'_, [u8; 16]> {
         return self.v.lock().unwrap();
     }
 
     pub fn get_v_reg(&self, reg: u8) -> u8 {
+        if cfg!(debug_assertions) && reg > 0xF {
+            panic!("Error: Should not be possible to access non-existent V registers.");
+        }
+
         return self.v.lock().unwrap()[reg as usize];
     }
 
     pub fn get_v_reg_xy(&self, x: u8, y: u8) -> (u8, u8) {
+        if cfg!(debug_assertions) && (x > 0xF || y > 0xF) {
+            panic!("Error: Should not be possible to access non-existent V registers.");
+        }
+
         let v = self.v.lock().unwrap();
         return (v[x as usize], v[y as usize]);
     }
 
-    pub fn get_v_reg_range(&self, range: Range<usize>) -> Vec<u8> {
-        return self.v.lock().unwrap()[range].to_vec();
+    pub fn get_v_reg_range<R>(&self, range: R) -> Vec<u8>
+    where
+        R: SliceIndex<[u8], Output = [u8]> + RangeBounds<usize>,
+    {
+        let v = self.v.lock().unwrap();
+
+        if cfg!(debug_assertions) {
+            let start = match range.start_bound() {
+                Bound::Included(&s) => s,
+                Bound::Excluded(&s) => s + 1,
+                Bound::Unbounded => 0,
+            };
+
+            let end = match range.end_bound() {
+                Bound::Included(&e) => e,
+                Bound::Excluded(&e) => e.saturating_sub(1),
+                Bound::Unbounded => v.len() - 1,
+            };
+
+            // Debug assertion (example: no higher than 0xF)
+            if start > 0xF || end > 0xF {
+                panic!("Error: Should not be possible to access non-existent V registers.");
+            }
+        }
+
+        return v[range].to_vec();
     }
 
     pub fn set_v_reg(&self, reg: u8, val: u8) {
+        if cfg!(debug_assertions) && reg > 0xF {
+            panic!("Error: Should not be possible to access non-existent V registers.");
+        }
+
         self.v.lock().unwrap()[(reg & 0x0F) as usize] = val;
     }
 
     pub fn set_v_reg_range(&self, reg: u8, vals: Vec<u8>) {
         let reg = reg as usize;
+
+        if cfg!(debug_assertions) && reg + vals.len() - 1 > 0xF {
+            panic!("Error: Should not be possible to access non-existent V registers.");
+        }
+
         self.v.lock().unwrap()[reg..reg + vals.len()].copy_from_slice(&vals);
     }
 }
