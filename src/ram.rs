@@ -102,18 +102,37 @@ impl RAM {
         return self.config.font_starting_address + ((digit as u16) * 5);
     }
 
-    pub fn write_byte(&self, val: u8, addr: u16) {
-        if cfg!(debug_assertions) && addr > 0xFFF {
-            panic!("Error: Address {:#x} should not be indexable.", addr);
+    pub fn write_byte(&self, val: u8, addr: u16) -> bool {
+        let mut addr = addr as usize;
+
+        if addr >= HEAP_SIZE {
+            if !self.config.allow_heap_overflow {
+                eprintln!("Error: Attempting to write to non-existent memory.");
+                self.active.store(false, Ordering::Relaxed);
+                return false;
+            }
+
+            addr %= 0x1000;
         }
 
         let mut heap = self.heap.lock().unwrap();
         heap[addr as usize] = val;
+        return true;
     }
 
     pub fn write_bytes(&self, vals: &Vec<u8>, addr: u16) -> bool {
-        let addr = addr as usize;
+        let mut addr = addr as usize;
         let count = vals.len();
+
+        if addr >= HEAP_SIZE {
+            if !self.config.allow_heap_overflow {
+                eprintln!("Error: Heap overflowed while writing.");
+                self.active.store(false, Ordering::Relaxed);
+                return false;
+            }
+
+            addr %= 0x1000;
+        }
 
         if addr + count > HEAP_SIZE {
             if !self.config.allow_heap_overflow {
@@ -138,18 +157,36 @@ impl RAM {
         return true;
     }
 
-    pub fn read_byte(&self, addr: u16) -> u8 {
-        if cfg!(debug_assertions) && addr > 0xFFF {
-            panic!("Error: Address {:#x} should not be indexable.", addr);
+    pub fn read_byte(&self, addr: u16) -> Option<u8> {
+        let mut addr = addr as usize;
+
+        if addr >= HEAP_SIZE {
+            if !self.config.allow_heap_overflow {
+                eprintln!("Error: Attempting to read from non-existent memory.");
+                self.active.store(false, Ordering::Relaxed);
+                return None;
+            }
+
+            addr %= 0x1000;
         }
 
         let heap = self.heap.lock().unwrap();
-        return heap[usize::from(addr)];
+        return Some(heap[addr]);
     }
 
     pub fn read_bytes(&self, addr: u16, count: u16) -> Option<Vec<u8>> {
-        let addr = usize::from(addr);
-        let count = usize::from(count);
+        let mut addr = addr as usize;
+        let count = count as usize;
+
+        if addr >= HEAP_SIZE {
+            if !self.config.allow_heap_overflow {
+                eprintln!("Error: Heap overflowed while writing.");
+                self.active.store(false, Ordering::Relaxed);
+                return None;
+            }
+
+            addr %= 0x1000;
+        }
 
         if addr + count > HEAP_SIZE {
             if !self.config.allow_heap_overflow {
@@ -262,7 +299,7 @@ mod tests {
 
         let ideal_byte = ram.config.font_data[50];
 
-        let actual_byte = ram.read_byte(ram.get_hex_digit_address(0xA));
+        let actual_byte = ram.read_byte(ram.get_hex_digit_address(0xA)).unwrap();
 
         assert_eq!(ideal_byte, actual_byte);
         assert!(active.load(Ordering::Relaxed));
@@ -274,9 +311,9 @@ mod tests {
 
         let ideal_byte = 0x56;
         let addr = 0x789;
-        ram.write_byte(ideal_byte, addr);
+        assert!(ram.write_byte(ideal_byte, addr));
 
-        let actual_byte = ram.read_byte(addr);
+        let actual_byte = ram.read_byte(addr).unwrap();
 
         assert_eq!(ideal_byte, actual_byte);
         assert!(active.load(Ordering::Relaxed));
@@ -290,7 +327,7 @@ mod tests {
         let start_addr: u16 = 0x789;
 
         for i in 0..5 {
-            ram.write_byte(ideal_bytes[usize::from(i)], start_addr + i);
+            assert!(ram.write_byte(ideal_bytes[i as usize], start_addr + i));
         }
 
         let actual_bytes = ram.read_bytes(start_addr, 5).unwrap();
@@ -328,6 +365,21 @@ mod tests {
     }
 
     #[test]
+    fn test_read_unaddressable_memory_with_successful_overflow() {
+        let (ram, active) = create_objects(ConfigType::LIBERAL);
+
+        let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
+
+        assert!(ram.write_bytes(&ideal_bytes[..3].to_vec(), 0xFFD));
+        assert!(ram.write_bytes(&ideal_bytes[3..].to_vec(), 0x000));
+
+        let actual_bytes = ram.read_bytes(0xFFD, 5).unwrap();
+
+        assert_eq!(ideal_bytes, actual_bytes);
+        assert!(active.load(Ordering::Relaxed));
+    }
+
+    #[test]
     fn test_write_bytes_to_memory() {
         let (ram, active) = create_objects(ConfigType::CONSERVATIVE);
 
@@ -339,7 +391,7 @@ mod tests {
         let mut actual_bytes: Vec<u8> = Vec::new();
 
         for i in start_addr..start_addr + 5 {
-            let byte = ram.read_byte(i);
+            let byte = ram.read_byte(i).unwrap();
             actual_bytes.push(byte);
         }
 

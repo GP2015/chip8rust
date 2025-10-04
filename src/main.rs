@@ -1,13 +1,13 @@
 mod config;
 mod cpu;
 mod emulib;
-mod gpu;
-mod input;
 mod instructions;
+mod io;
 mod ram;
 mod timer;
 
 use crate::cpu::CPU;
+use crate::io::IO;
 use crate::ram::RAM;
 use crate::timer::{DelayTimer, SoundTimer};
 use clap::Parser;
@@ -48,6 +48,11 @@ fn main() {
         return;
     };
 
+    let Some(io) = IO::try_new(active.clone(), config.io) else {
+        eprintln!("Emulator terminated with error.");
+        return;
+    };
+
     let Some(cpu) = CPU::try_new(
         active.clone(),
         config.cpu,
@@ -66,11 +71,12 @@ fn main() {
 
     let delay_timer_handle = thread::spawn(move || delay_timer.run());
     let sound_timer_handle = thread::spawn(move || sound_timer.run());
+    let io_handle = thread::spawn(move || io.run());
     let cpu_handle = thread::spawn(move || cpu.run());
 
-    cpu_handle.join().unwrap();
     delay_timer_handle.join().unwrap();
     sound_timer_handle.join().unwrap();
+    cpu_handle.join().unwrap();
 
     println!("Stopping emulator...")
 }

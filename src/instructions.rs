@@ -346,11 +346,10 @@ fn i_Fx18_LD_ST_Vx(this: &CPU, op: &Opcode) {
 
 #[allow(non_snake_case)]
 fn i_Fx1E_ADD_I_Vx(this: &CPU, op: &Opcode) {
-    let mut index = this.get_index_reg_ref();
     let mut v = this.get_v_regs_ref();
-    *index += v[op.get_x_usize()] as u16;
+    this.increment_index_reg_by(v[op.get_x_usize()] as u16);
 
-    if this.config.set_flag_for_index_overflow && *index > 0xFFF {
+    if this.config.set_flag_for_index_overflow && this.get_index_reg() > 0xFFF {
         v[0xF] = 1;
     }
 }
@@ -374,31 +373,25 @@ fn i_Fx33_LD_B_Vx(this: &CPU, op: &Opcode) {
 #[allow(non_snake_case)]
 fn i_Fx55_LD_I_Vx(this: &CPU, op: &Opcode) {
     let x = op.get_x();
-    let mut index = this.get_index_reg_ref();
     this.ram
-        .write_bytes(&this.get_v_reg_range(0..=x as usize), *index);
+        .write_bytes(&this.get_v_reg_range(0..=x as usize), this.get_index_reg());
 
     if this.config.move_index_with_reads {
-        *index += x as u16;
+        this.increment_index_reg_by(x as u16);
     }
 }
 
 #[allow(non_snake_case)]
 fn i_Fx65_LD_Vx_I(this: &CPU, op: &Opcode) {
     let x = op.get_x();
-    let mut index = this.get_index_reg_ref();
 
-    let Some(bytes) = this.ram.read_bytes(*index, x as u16 + 1) else {
+    let Some(bytes) = this.ram.read_bytes(this.get_index_reg(), x as u16 + 1) else {
         return;
     };
 
-    this.set_v_reg_range(0, bytes);
+    this.set_v_reg_range(0, &bytes);
 
     if this.config.move_index_with_reads {
-        *index += x as u16;
+        this.increment_index_reg_by(x as u16);
     }
-}
-
-mod tests {
-    use super::*;
 }

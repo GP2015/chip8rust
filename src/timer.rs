@@ -11,8 +11,8 @@ pub struct DelayTimer {
 
 impl DelayTimer {
     pub fn try_new(active: Arc<AtomicBool>, config: DelayTimerConfig) -> Option<Arc<Self>> {
-        if config.delay_timer_decrement_rate == 0.0 {
-            eprintln!("Error: The delay timer decrement rate must be greater than zero.");
+        if config.delay_timer_decrement_rate <= 0.0 {
+            eprintln!("Error: The delay timer's decrement rate must be greater than zero.");
             active.store(false, Ordering::Relaxed);
             return None;
         }
@@ -66,8 +66,8 @@ pub struct SoundTimer {
 
 impl SoundTimer {
     pub fn try_new(active: Arc<AtomicBool>, config: SoundTimerConfig) -> Option<Arc<Self>> {
-        if config.sound_timer_decrement_rate == 0.0 {
-            eprintln!("Error: The sound timer decrement rate must be greater than zero.");
+        if config.sound_timer_decrement_rate <= 0.0 {
+            eprintln!("Error: The sound timer's decrement rate must be greater than zero.");
             active.store(false, Ordering::Relaxed);
             return None;
         }

@@ -3,84 +3,118 @@
 [cpu]
 
 # The number of instructions to execute per second.
+# This must be a 64-bit floating-point value, greater than 0.
 # Any value works, but 700 is often recommended.
 instructions_per_second = 700
 
 # Whether to use the new shift instruction definition or not.
+# This must be a boolean value (true or false).
 # Most programs use the old definition (if so, set this to false).
 use_new_shift_instruction = false
 
 # Whether to use the new jump instruction definition or not.
+# This must be a boolean value (true or false).
 # Most programs use the old definition (if so, set this to false).
 use_new_jump_instruction = false
 
 # Whether to set the overflow flag (VF) high when the index register goes beyond the addressable range.
+# This must be a boolean value (true or false).
 # This rarely matters, but is sometimes required (if so, set this to true).
 set_flag_for_index_overflow = true
 
 # Whether to increment the index register as multiple bytes are read at once.
+# This must be a boolean value (true or false).
 # Most programs keep the register static (if so, set this to false).
 move_index_with_reads = false
 
 # Whether to allow the program counter to overflow.
+# This must be a boolean value (true or false).
 # Doesn't matter either way to most programs.
 allow_program_counter_overflow = true
 
 # Whether to use true randomness for the random instruction (i.e. seeds to a random value each time).
+# This must be a boolean value (true or false).
 # Setting this to true will cause a different output each time.
 use_true_randomness = false
 
 # The seed for the randomness function.
 # Only applicable if not using true randomness (i.e. use_true_randomness = false).
+# This must be a 64-bit unsigned integer value.
 fake_randomness_seed = 0
 
+# Whether to allow the index register to overflow.
+# This must be a boolean value (true or false).
+# Doesn't matter either way to most programs.
+allow_index_register_overflow = true
 
-# --- GPU settings ---
-[gpu]
+
+# --- Input/Output settings ---
+[io]
 
 # The amount of pixels on the horizontal axis.
+# This must be an unsigned integer value.
 # 64 in the CHIP-8; 128 in the SUPER-CHIP-8.
 horizontal_resolution = 64
 
 # The amount of pixels on the vertical axis.
+# This must be an unsigned integer value.
 # 32 in the CHIP-8; 48 in the ETI 660; 64 in the SUPER-CHIP-8.
 vertical_resolution = 32
 
 # Whether to wrap around to the other side of the screen when drawing off-screen pixels.
+# This must be a boolean value (true or false).
 # Most programs use this functionality (if so, set this to true).
 wrap_pixels = true
 
-# When to render the framebuffer to the screen. Can be one of the below options:
+# When to render the framebuffer to the screen.
+# This must be a String. Can be one of the below options:
 # "changes": draws after all commands that change the framebuffer somehow; otherwise waits.
 # "frequency": draws at a constant frequency (specified in render_frequency)
-render_occasion = "on changes"
+render_occasion = "changes"
 
 # The frequency at which to render the framebuffer to the screen.
 # Only applicable if not rendering at constant frequency (i.e. render_occasion = "frequency").
+# This must be a 64-bit floating-point value, greater than 0.
 render_frequency = 60
+
+# The keybindings for each of the 16 inputs.
+# These are ordered by the original keypad's hexadecimal naming convention.
+key_bindings = [
+    '1', '2', '3',
+    'q', 'w', 'e',
+    'a', 's', 'd',
+         'x',
+    'z',      'c',
+    '4', 'r', 'f', 'v'
+]
 
 
 # --- RAM settings ---
 [ram]
 
 # The maximum size of the stack.
+# This must be an unsigned integer value.
 # 16 is the standard value for most programs.
 stack_size = 16
 
 # Whether to allow the stack to overflow or not.
+# This must be a boolean value (true or false).
 # Doesn't matter either way to most programs.
 allow_stack_overflow = true
 
 # Whether to allow memory reads and writes to overflow.
+# This must be a boolean value (true or false).
  # Doesn't matter either way to most programs.
 allow_heap_overflow = true
 
 # The index that the font data begins at, on the heap.
-# Any number from 0x0 to 0x1b0 (inclusive) works, but above that will cause issues in most programs.
+# This must be a 16-bit unsigned integer value, no greater than 0xFB0. 
+# Any number from 0x0 to 0x1b0 (inclusive) is fine, but above that could cause issues in some programs.
 font_starting_address = 0x50
 
 # Byte representation of all the hexadecimal numbers.
 # Each number has 5 bytes associated with it.
+# This must be an array of 80 different 8-bit unsigned integer values.
 font_data = [
     0xf0, 0x90, 0x90, 0x90, 0xf0, # 0
     0x20, 0x60, 0x20, 0x20, 0x70, # 1
@@ -105,6 +139,7 @@ font_data = [
 [delay_timer]
 
 # The rate at which to decrement the delay timer (in Hz).
+# This must be a 64-bit floating-point value, greater than 0.
 # This should be 60 Hz for most programs.
 delay_timer_decrement_rate = 60
 
@@ -113,20 +148,6 @@ delay_timer_decrement_rate = 60
 [sound_timer]
 
 # The rate at which to decrement the sound timer (in Hz).
+# This must be a 64-bit floating-point value, greater than 0.
 # This should be 60 Hz for most programs.
 sound_timer_decrement_rate = 60
-
-
-# --- Input Settings ---
-[input]
-
-# The keybindings for each of the 16 inputs.
-# These are ordered by the original keypad's hexadecimal naming convention.
-key_bindings = [
-    '1', '2', '3',
-    'q', 'w', 'e',
-    'a', 's', 'd',
-         'x',
-    'z',      'c',
-    '4', 'r', 'f', 'v'
-]
