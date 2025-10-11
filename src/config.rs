@@ -9,10 +9,11 @@ const CONFIG_FILE_PATH: &str = "config.toml";
 #[derive(Deserialize, Debug)]
 pub struct Config {
     pub cpu: CPUConfig,
+    pub gpu: GPUConfig,
+    pub input: InputConfig,
     pub ram: RAMConfig,
     pub delay_timer: DelayTimerConfig,
     pub sound_timer: SoundTimerConfig,
-    pub io: IOConfig,
 }
 
 #[derive(Deserialize, Debug)]
@@ -36,12 +37,16 @@ pub enum RenderOccasion {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct IOConfig {
-    pub horizontal_resolution: usize,
-    pub vertical_resolution: usize,
+pub struct GPUConfig {
+    pub horizontal_resolution: u32,
+    pub vertical_resolution: u32,
     pub wrap_pixels: bool,
     pub render_occasion: RenderOccasion,
     pub render_frequency: f64,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct InputConfig {
     pub key_bindings: [String; 16],
 }
 

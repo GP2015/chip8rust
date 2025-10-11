@@ -48,16 +48,16 @@ fake_randomness_seed = 0
 allow_index_register_overflow = true
 
 
-# --- Input/Output settings ---
-[io]
+# --- Graphics settings ---
+[gpu]
 
 # The amount of pixels on the horizontal axis.
-# This must be an unsigned integer value.
+# This must be an unsigned 32-bit integer value.
 # 64 in the CHIP-8; 128 in the SUPER-CHIP-8.
 horizontal_resolution = 64
 
 # The amount of pixels on the vertical axis.
-# This must be an unsigned integer value.
+# This must be an unsigned 32-bit integer value.
 # 32 in the CHIP-8; 48 in the ETI 660; 64 in the SUPER-CHIP-8.
 vertical_resolution = 32
 
@@ -76,6 +76,10 @@ render_occasion = "changes"
 # Only applicable if not rendering at constant frequency (i.e. render_occasion = "frequency").
 # This must be a 64-bit floating-point value, greater than 0.
 render_frequency = 60
+
+
+# --- Input Settings ---
+[input]
 
 # The keybindings for each of the 16 inputs.
 # These are ordered by the original keypad's hexadecimal naming convention.
