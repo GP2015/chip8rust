@@ -1,6 +1,6 @@
 use crate::config::RAMConfig;
 use std::fs;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 pub const PROGRAM_START_ADDRESS: u16 = 0x200;
@@ -11,7 +11,7 @@ pub struct RAM {
     config: RAMConfig,
     heap: Mutex<[u8; HEAP_SIZE]>,
     stack: Mutex<Vec<u16>>,
-    stack_ptr: Mutex<usize>,
+    stack_ptr: AtomicUsize,
 }
 
 impl RAM {
@@ -32,7 +32,7 @@ impl RAM {
             active,
             heap: Mutex::new([0; HEAP_SIZE]),
             stack: Mutex::new(vec![0; config.stack_size]),
-            stack_ptr: Mutex::new(0),
+            stack_ptr: AtomicUsize::new(0),
             config,
         };
 
@@ -211,47 +211,49 @@ impl RAM {
     }
 
     pub fn push_to_stack(&self, val: u16) -> bool {
-        let mut stack_ptr = self.stack_ptr.lock().unwrap();
+        let mut stack = self.stack.lock().unwrap();
 
-        if *stack_ptr == self.config.stack_size {
+        let stack_ptr = self.stack_ptr.load(Ordering::Relaxed);
+
+        if stack_ptr == self.config.stack_size {
             if !self.config.allow_stack_overflow {
                 eprintln!("Error: Stack overflowed while pushing.");
                 self.active.store(false, Ordering::Relaxed);
                 return false;
             }
 
-            let mut stack = self.stack.lock().unwrap();
             stack[0] = val;
-            *stack_ptr = 1;
+            self.stack_ptr.store(1, Ordering::Relaxed);
 
             return true;
         }
 
-        let mut stack = self.stack.lock().unwrap();
-        stack[*stack_ptr] = val;
-        *stack_ptr += 1;
+        stack[stack_ptr] = val;
+        self.stack_ptr.store(stack_ptr + 1, Ordering::Relaxed);
 
         return true;
     }
 
     pub fn pop_from_stack(&self) -> Option<u16> {
-        let mut stack_ptr = self.stack_ptr.lock().unwrap();
+        let stack = self.stack.lock().unwrap();
 
-        if *stack_ptr == 0 {
+        let stack_ptr = self.stack_ptr.load(Ordering::Relaxed);
+
+        if stack_ptr == 0 {
             if !self.config.allow_stack_overflow {
                 eprintln!("Error: Stack overflowed while popping.");
                 self.active.store(false, Ordering::Relaxed);
                 return None;
             }
 
-            let stack = self.stack.lock().unwrap();
-            *stack_ptr = self.config.stack_size - 1;
-            return Some(stack[*stack_ptr]);
+            self.stack_ptr
+                .store(self.config.stack_size - 1, Ordering::Relaxed);
+            return Some(stack[stack_ptr]);
         }
 
-        let stack = self.stack.lock().unwrap();
-        *stack_ptr -= 1;
-        return Some(stack[*stack_ptr]);
+        self.stack_ptr.store(stack_ptr - 1, Ordering::Relaxed);
+
+        return Some(stack[stack_ptr]);
     }
 }
 

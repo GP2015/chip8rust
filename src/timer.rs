@@ -1,12 +1,12 @@
 use crate::config::{DelayTimerConfig, SoundTimerConfig};
 use crate::emulib::Limiter;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
 pub struct DelayTimer {
     active: Arc<AtomicBool>,
     config: DelayTimerConfig,
-    value: Mutex<u8>,
+    value: AtomicU8,
 }
 
 impl DelayTimer {
@@ -20,7 +20,7 @@ impl DelayTimer {
         return Some(Arc::new(Self {
             active,
             config,
-            value: Mutex::new(0),
+            value: AtomicU8::new(0),
         }));
     }
 
@@ -41,27 +41,26 @@ impl DelayTimer {
         while self.active.load(Ordering::Relaxed) {
             limiter.wait_if_early();
 
-            let mut value = self.value.lock().unwrap();
-
-            if *value > 0 {
-                *value -= 1;
-            }
+            self.value
+                .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {
+                    if v > 0 { Some(v - 1) } else { None }
+                });
         }
     }
 
     pub fn get_value(&self) -> u8 {
-        return *self.value.lock().unwrap();
+        return self.value.load(Ordering::Relaxed);
     }
 
     pub fn set_value(&self, val: u8) {
-        *self.value.lock().unwrap() = val;
+        self.value.store(val, Ordering::Relaxed);
     }
 }
 
 pub struct SoundTimer {
     active: Arc<AtomicBool>,
     config: SoundTimerConfig,
-    value: Mutex<u8>,
+    value: AtomicU8,
 }
 
 impl SoundTimer {
@@ -75,7 +74,7 @@ impl SoundTimer {
         return Some(Arc::new(Self {
             active,
             config,
-            value: Mutex::new(0),
+            value: AtomicU8::new(0),
         }));
     }
 
@@ -96,20 +95,19 @@ impl SoundTimer {
         while self.active.load(Ordering::Relaxed) {
             limiter.wait_if_early();
 
-            let mut value = self.value.lock().unwrap();
-
-            if *value > 0 {
-                *value -= 1;
-            }
+            self.value
+                .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {
+                    if v > 0 { Some(v - 1) } else { None }
+                });
         }
     }
 
     pub fn get_value(&self) -> u8 {
-        return *self.value.lock().unwrap();
+        return self.value.load(Ordering::Relaxed);
     }
 
     pub fn set_value(&self, val: u8) {
-        *self.value.lock().unwrap() = val;
+        self.value.store(val, Ordering::Relaxed);
     }
 }
 
