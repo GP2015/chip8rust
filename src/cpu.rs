@@ -179,9 +179,9 @@ impl CPU {
         return true;
     }
 
-    // pub fn get_index_reg_ref(&self) -> MutexGuard<'_, u16> {
-    //     return self.index.lock().unwrap();
-    // }
+    pub fn get_index_reg_ref(&self) -> MutexGuard<'_, u16> {
+        return self.index.lock().unwrap();
+    }
 
     pub fn get_index_reg(&self) -> u16 {
         return *self.index.lock().unwrap();
@@ -197,19 +197,27 @@ impl CPU {
         *self.index.lock().unwrap() = value;
     }
 
-    pub fn increment_index_reg_by(&self, value: u16) -> bool {
-        let mut index = self.index.lock().unwrap();
+    pub fn increment_index_reg_by(&self, value: u16) -> Option<bool> {
+        let index = self.index.lock().unwrap();
+        return self.increment_index_reg_ref_by(index, value);
+    }
 
-        let (val, wrapped) = index.overflowing_add(value);
+    pub fn increment_index_reg_ref_by(
+        &self,
+        mut index_ref: MutexGuard<'_, u16>,
+        value: u16,
+    ) -> Option<bool> {
+        let (val, wrapped) = index_ref.overflowing_add(value);
 
         if wrapped && !self.config.allow_index_register_overflow {
             eprintln!("Error: Index register overflowed.");
             self.active.store(false, Ordering::Relaxed);
-            return false;
+            return None;
         }
 
-        *index = val;
-        return true;
+        *index_ref = val;
+
+        return Some(*index_ref > 0xFFF);
     }
 
     pub fn get_v_regs_ref(&self) -> MutexGuard<'_, [u8; 16]> {
