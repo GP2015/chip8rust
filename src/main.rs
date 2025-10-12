@@ -8,6 +8,7 @@ mod ram;
 mod timer;
 mod window;
 
+use crate::config::Config;
 use crate::cpu::CPU;
 use crate::gpu::GPU;
 use crate::input::InputManager;
@@ -26,41 +27,86 @@ struct Args {
     program_path: String,
 }
 
+struct Components {
+    active: Arc<AtomicBool>,
+    cpu: Arc<CPU>,
+    gpu: Arc<GPU>,
+    ram: Arc<RAM>,
+    delay_timer: Arc<DelayTimer>,
+    sound_timer: Arc<SoundTimer>,
+    input_manager: Arc<InputManager>,
+}
+
 fn main() {
     println!("Starting emulator...");
 
     let args = Args::parse();
 
-    let Some(config) = config::generate_configs() else {
-        eprintln!("Emulator terminated with error.");
+    let Some(comps) = create_components() else {
+        eprintln!("Stopping emulator...");
         return;
+    };
+
+    let mut window_manager = WindowManager::new(
+        comps.active.clone(),
+        comps.gpu.clone(),
+        comps.input_manager.clone(),
+    );
+
+    let event_loop = EventLoop::new().unwrap();
+    event_loop.set_control_flow(ControlFlow::Poll);
+
+    if let Err(e) = event_loop.run_app(&mut window_manager) {
+        eprintln!(
+            "Window manager event loop failed with following error: {e}\nStopping emulator..."
+        );
+        return;
+    };
+
+    let mut handles = Vec::new();
+
+    handles.push(thread::spawn(move || comps.delay_timer.run()));
+    handles.push(thread::spawn(move || comps.sound_timer.run()));
+
+    if comps.gpu.should_render_separately() {
+        let gpu = comps.gpu.clone();
+        handles.push(thread::spawn(move || gpu.run_separate_render()));
+    }
+
+    handles.push(thread::spawn(move || comps.cpu.run()));
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("Stopping emulator...");
+}
+
+fn create_components() -> Option<Components> {
+    let Some(config) = config::generate_configs() else {
+        return None;
     };
 
     let active = Arc::new(AtomicBool::new(true));
 
     let Some(delay_timer) = DelayTimer::try_new(active.clone(), config.delay_timer) else {
-        eprintln!("Emulator terminated with error.");
-        return;
+        return None;
     };
 
     let Some(sound_timer) = SoundTimer::try_new(active.clone(), config.sound_timer) else {
-        eprintln!("Emulator terminated with error.");
-        return;
+        return None;
     };
 
     let Some(ram) = RAM::try_new(active.clone(), config.ram) else {
-        eprintln!("Emulator terminated with error.");
-        return;
+        return None;
     };
 
     let Some(gpu) = GPU::try_new(active.clone(), config.gpu) else {
-        eprintln!("Emulator terminated with error.");
-        return;
+        return None;
     };
 
-    let Some(input_manager) = InputManager::try_new(active, config.input) else {
-        eprintln!("Emulator terminated with error.");
-        return;
+    let Some(input_manager) = InputManager::try_new(active.clone(), config.input) else {
+        return None;
     };
 
     let Some(cpu) = CPU::try_new(
@@ -70,38 +116,16 @@ fn main() {
         delay_timer.clone(),
         sound_timer.clone(),
     ) else {
-        eprintln!("Emulator terminated with error.");
-        return;
+        return None;
     };
 
-    let window_manager = WindowManager::new(active, gpu, input_manager);
-
-    if !ram.load_program(&args.program_path) {
-        eprintln!("Emulator terminated with error.");
-        return;
-    }
-
-    let mut handles = Vec::new();
-
-    handles.push(thread::spawn(move || delay_timer.run()));
-    handles.push(thread::spawn(move || sound_timer.run()));
-
-    if gpu.render_separately() {
-        let gpu_clone = gpu.clone();
-        handles.push(thread::spawn(move || gpu_clone.run_separate_render()));
-    }
-
-    handles.push(thread::spawn(move || cpu.run()));
-
-    let event_loop = EventLoop::new().unwrap();
-    event_loop.set_control_flow(ControlFlow::Poll);
-    event_loop.run_app(io);
-
-    io.run();
-
-    for handle in handles {
-        handle.join().unwrap();
-    }
-
-    println!("Stopping emulator...");
+    return Some(Components {
+        active,
+        cpu,
+        gpu,
+        ram,
+        delay_timer,
+        sound_timer,
+        input_manager,
+    });
 }

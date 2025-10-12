@@ -8,6 +8,7 @@ pub struct GPU {
     active: Arc<AtomicBool>,
     config: GPUConfig,
     framebuffer: Mutex<Vec<bool>>,
+    render_queued: AtomicBool,
 }
 
 impl GPU {
@@ -25,18 +26,12 @@ impl GPU {
                 config.horizontal_resolution as usize
                     * config.vertical_resolution as usize
             ]),
+            render_queued: AtomicBool::new(false),
             config,
         }));
     }
 
-    pub fn get_window_size(&self) -> LogicalSize<u32> {
-        return LogicalSize::new(
-            self.config.horizontal_resolution,
-            self.config.vertical_resolution,
-        );
-    }
-
-    pub fn render_separately(&self) -> bool {
+    pub fn should_render_separately(&self) -> bool {
         return matches!(self.config.render_occasion, RenderOccasion::Frequency);
     }
 
@@ -48,5 +43,12 @@ impl GPU {
 
             // To do
         }
+    }
+
+    pub fn get_window_size(&self) -> LogicalSize<u32> {
+        return LogicalSize::new(
+            self.config.horizontal_resolution,
+            self.config.vertical_resolution,
+        );
     }
 }
