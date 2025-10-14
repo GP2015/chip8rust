@@ -248,12 +248,12 @@ impl RAM {
 
             self.stack_ptr
                 .store(self.config.stack_size - 1, Ordering::Relaxed);
-            return Some(stack[stack_ptr]);
+            return Some(stack[self.config.stack_size - 1]);
         }
 
         self.stack_ptr.store(stack_ptr - 1, Ordering::Relaxed);
 
-        return Some(stack[stack_ptr]);
+        return Some(stack[stack_ptr - 1]);
     }
 }
 
