@@ -4,12 +4,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use winit::application::ApplicationHandler;
 use winit::event::{DeviceEvent, DeviceId, StartCause, WindowEvent};
-use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::keyboard::KeyCode;
+use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowId};
 use winit_input_helper::WinitInputHelper;
 
-const RESOLUTION_SCALAR: i32 = 10;
+const RESOLUTION_SCALAR: isize = 10;
 const WINDOW_TITLE: &str = "CHIP-8 Emulator";
 
 pub struct WindowManager {
@@ -63,9 +62,7 @@ impl ApplicationHandler for WindowManager {
             return;
         }
 
-        if self.input.key_pressed(KeyCode::KeyW) {
-            println!("The 'W' key (US layout) was pressed on the keyboard");
-        }
+        self.input_manager.update_input(&self.input);
     }
 }
 

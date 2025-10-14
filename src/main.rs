@@ -112,9 +112,11 @@ fn create_components() -> Option<Components> {
     let Some(cpu) = CPU::try_new(
         active.clone(),
         config.cpu,
+        gpu.clone(),
         ram.clone(),
         delay_timer.clone(),
         sound_timer.clone(),
+        input_manager.clone(),
     ) else {
         return None;
     };

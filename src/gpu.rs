@@ -13,7 +13,9 @@ pub struct GPU {
 
 impl GPU {
     pub fn try_new(active: Arc<AtomicBool>, config: GPUConfig) -> Option<Arc<Self>> {
-        if config.render_frequency <= 0.0 {
+        if matches!(config.render_occasion, RenderOccasion::Frequency)
+            && config.render_frequency <= 0.0
+        {
             eprintln!("Error: The graphic render frequency must be greater than 0.");
             active.store(false, Ordering::Relaxed);
             return None;
@@ -29,6 +31,36 @@ impl GPU {
             render_queued: AtomicBool::new(false),
             config,
         }));
+    }
+
+    #[cfg(test)]
+    pub fn new_default_wrapping(active: Arc<AtomicBool>) -> Arc<Self> {
+        Self::try_new(
+            active,
+            GPUConfig {
+                horizontal_resolution: 64,
+                vertical_resolution: 32,
+                wrap_pixels: true,
+                render_occasion: RenderOccasion::Changes,
+                render_frequency: 0.0,
+            },
+        )
+        .unwrap()
+    }
+
+    #[cfg(test)]
+    pub fn new_default_no_wrapping(active: Arc<AtomicBool>) -> Arc<Self> {
+        Self::try_new(
+            active,
+            GPUConfig {
+                horizontal_resolution: 64,
+                vertical_resolution: 32,
+                wrap_pixels: false,
+                render_occasion: RenderOccasion::Changes,
+                render_frequency: 0.0,
+            },
+        )
+        .unwrap()
     }
 
     pub fn should_render_separately(&self) -> bool {

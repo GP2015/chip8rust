@@ -84,12 +84,12 @@ render_frequency = 60
 # The keybindings for each of the 16 inputs.
 # These are ordered by the original keypad's hexadecimal naming convention.
 key_bindings = [
-    '1', '2', '3',
-    'q', 'w', 'e',
-    'a', 's', 'd',
-         'x',
-    'z',      'c',
-    '4', 'r', 'f', 'v'
+    "1", "2", "3",
+    "q", "w", "e",
+    "a", "s", "d",
+         "x",
+    "z",      "c",
+    "4", "r", "f", "v"
 ]
 
 

@@ -1,7 +1,9 @@
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use serde_with::serde_as;
 use std::fs;
 use toml;
+use winit::keyboard::Key;
+use winit::keyboard::SmolStr;
 
 const CONFIG_FILE_PATH: &str = "config.toml";
 
@@ -45,9 +47,23 @@ pub struct GPUConfig {
     pub render_frequency: f64,
 }
 
+fn deserialize_keys<'de, D>(deserializer: D) -> Result<[Key<SmolStr>; 16], D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let vec = Vec::<String>::deserialize(deserializer)?;
+    return vec
+        .into_iter()
+        .map(|key| Key::Character(SmolStr::new(key)))
+        .collect::<Vec<_>>()
+        .try_into()
+        .map_err(|_| serde::de::Error::custom("expected exactly 16 keys"));
+}
+
 #[derive(Deserialize, Debug)]
 pub struct InputConfig {
-    pub key_bindings: [String; 16],
+    #[serde(deserialize_with = "deserialize_keys")]
+    pub key_bindings: [Key<SmolStr>; 16],
 }
 
 #[serde_as]
@@ -73,16 +89,21 @@ pub struct SoundTimerConfig {
 
 pub fn generate_configs() -> Option<Config> {
     let Ok(raw_config) = fs::read_to_string(CONFIG_FILE_PATH) else {
-        eprintln!("Error: Could not find config.toml.");
+        eprintln!("Error: Could not read config.toml at {}", CONFIG_FILE_PATH);
         return None;
     };
 
-    let Ok(config): Result<Config, _> = toml::from_str(&raw_config) else {
-        eprintln!("Error: Could not parse config.toml.");
+    let config: Result<Config, toml::de::Error> = toml::from_str(&raw_config);
+
+    if config.is_err() {
+        eprintln!(
+            "Error: Could not parse config.toml ({})",
+            config.err().unwrap().message()
+        );
         return None;
     };
 
-    return Some(config);
+    return Some(config.ok().unwrap());
 }
 
 #[cfg(test)]

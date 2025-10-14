@@ -1,5 +1,7 @@
 use crate::config::CPUConfig;
 use crate::emulib::Limiter;
+use crate::gpu::GPU;
+use crate::input::InputManager;
 use crate::instructions::{self, InstructionFunction, Opcode};
 use crate::ram::{PROGRAM_START_ADDRESS, RAM};
 use crate::timer::{DelayTimer, SoundTimer};
@@ -12,9 +14,11 @@ use std::sync::{Arc, Mutex, MutexGuard};
 pub struct CPU {
     pub active: Arc<AtomicBool>,
     pub config: CPUConfig,
+    pub gpu: Arc<GPU>,
     pub ram: Arc<RAM>,
     pub delay_timer: Arc<DelayTimer>,
     pub sound_timer: Arc<SoundTimer>,
+    pub input_manager: Arc<InputManager>,
     pc: Mutex<u16>,
     index: Mutex<u16>,
     v: Mutex<[u8; 16]>,
@@ -24,9 +28,11 @@ impl CPU {
     pub fn try_new(
         active: Arc<AtomicBool>,
         config: CPUConfig,
+        gpu: Arc<GPU>,
         ram: Arc<RAM>,
         delay_timer: Arc<DelayTimer>,
         sound_timer: Arc<SoundTimer>,
+        input_manager: Arc<InputManager>,
     ) -> Option<Arc<Self>> {
         if config.instructions_per_second <= 0.0 {
             eprintln!("Error: The CPU's instruction-per-second rate must be greater than 0.");
@@ -37,9 +43,11 @@ impl CPU {
         return Some(Arc::new(Self {
             active,
             config,
+            gpu,
             ram,
             delay_timer,
             sound_timer,
+            input_manager,
             pc: Mutex::new(PROGRAM_START_ADDRESS),
             index: Mutex::new(0),
             v: Mutex::new([0; 16]),
@@ -49,11 +57,13 @@ impl CPU {
     #[cfg(test)]
     pub fn new_default_all_false(
         active: Arc<AtomicBool>,
+        gpu: Arc<GPU>,
         ram: Arc<RAM>,
         delay_timer: Arc<DelayTimer>,
         sound_timer: Arc<SoundTimer>,
+        input_manager: Arc<InputManager>,
     ) -> Arc<Self> {
-        CPU::try_new(
+        Self::try_new(
             active,
             CPUConfig {
                 instructions_per_second: 700.0,
@@ -66,9 +76,11 @@ impl CPU {
                 fake_randomness_seed: 0,
                 allow_index_register_overflow: false,
             },
+            gpu,
             ram,
             delay_timer,
             sound_timer,
+            input_manager,
         )
         .unwrap()
     }
@@ -76,11 +88,13 @@ impl CPU {
     #[cfg(test)]
     pub fn new_default_all_true(
         active: Arc<AtomicBool>,
+        gpu: Arc<GPU>,
         ram: Arc<RAM>,
         delay_timer: Arc<DelayTimer>,
         sound_timer: Arc<SoundTimer>,
+        input_manager: Arc<InputManager>,
     ) -> Arc<Self> {
-        CPU::try_new(
+        Self::try_new(
             active,
             CPUConfig {
                 instructions_per_second: 700.0,
@@ -93,9 +107,11 @@ impl CPU {
                 fake_randomness_seed: 0,
                 allow_index_register_overflow: true,
             },
+            gpu,
             ram,
             delay_timer,
             sound_timer,
+            input_manager,
         )
         .unwrap()
     }
@@ -260,7 +276,6 @@ impl CPU {
                 Bound::Unbounded => v.len() - 1,
             };
 
-            // Debug assertion (example: no higher than 0xF)
             if start > 0xF || end > 0xF {
                 panic!("Error: Should not be possible to access non-existent V registers.");
             }
@@ -299,16 +314,29 @@ mod tests {
 
     fn create_objects(cfg_type: ConfigType) -> (Arc<CPU>, Arc<AtomicBool>) {
         let active = Arc::new(AtomicBool::new(true));
-        let ram = RAM::new_default_conservative(active.clone());
+
         let delay_timer = DelayTimer::new_default(active.clone());
         let sound_timer = SoundTimer::new_default(active.clone());
+        let ram = RAM::new_default_conservative(active.clone());
+        let gpu = GPU::new_default_wrapping(active.clone());
+        let input_manager = InputManager::new_default(active.clone());
         let cpu = match cfg_type {
-            ConfigType::CONSERVATIVE => {
-                CPU::new_default_all_false(active.clone(), ram, delay_timer, sound_timer)
-            }
-            ConfigType::LIBERAL => {
-                CPU::new_default_all_true(active.clone(), ram, delay_timer, sound_timer)
-            }
+            ConfigType::CONSERVATIVE => CPU::new_default_all_false(
+                active.clone(),
+                gpu,
+                ram,
+                delay_timer,
+                sound_timer,
+                input_manager,
+            ),
+            ConfigType::LIBERAL => CPU::new_default_all_true(
+                active.clone(),
+                gpu,
+                ram,
+                delay_timer,
+                sound_timer,
+                input_manager,
+            ),
         };
 
         return (cpu, active);
