@@ -68,7 +68,7 @@ pub fn get_instruction_function(op: &Opcode) -> Option<InstructionFunction> {
             0x0E0 => Some(i_00E0_CLS),
             0x0EE => Some(i_00EE_RET),
             _ => {
-                // eprintln!("Error: Machine code routines are not supported.");
+                eprintln!("Error: Machine code routines are not supported.");
                 None
             }
         },

@@ -42,7 +42,7 @@ fn main() {
     let args = Args::parse();
 
     let Some(comps) = create_components() else {
-        eprintln!("Stopping emulator...");
+        println!("Stopping emulator...");
         return;
     };
 
