@@ -1,6 +1,5 @@
 use crate::config::{GPUConfig, RenderOccasion};
 use crate::emulib::Limiter;
-use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -20,7 +19,7 @@ impl GPU {
         }
 
         let framebuffer_size =
-            config.horizontal_resolution.get() as usize * config.vertical_resolution.get() as usize;
+            config.horizontal_resolution as usize * config.vertical_resolution as usize;
 
         return Some(Arc::new(Self {
             active,
@@ -38,8 +37,8 @@ impl GPU {
                 pixel_color_when_active: 0xFFFFFF,
                 pixel_color_when_inactive: 0x000000,
                 screen_border_color: 0x777777,
-                horizontal_resolution: NonZeroU32::new(64).unwrap(),
-                vertical_resolution: NonZeroU32::new(32).unwrap(),
+                horizontal_resolution: 64,
+                vertical_resolution: 32,
                 wrap_pixels: true,
                 render_occasion: RenderOccasion::Changes,
                 render_frequency: 0.0,
@@ -56,8 +55,8 @@ impl GPU {
                 pixel_color_when_active: 0xFFFFFF,
                 pixel_color_when_inactive: 0x000000,
                 screen_border_color: 0x777777,
-                horizontal_resolution: NonZeroU32::new(64).unwrap(),
-                vertical_resolution: NonZeroU32::new(32).unwrap(),
+                horizontal_resolution: 64,
+                vertical_resolution: 32,
                 wrap_pixels: false,
                 render_occasion: RenderOccasion::Changes,
                 render_frequency: 0.0,
@@ -80,7 +79,7 @@ impl GPU {
         }
     }
 
-    pub fn get_screen_resolution(&self) -> (NonZeroU32, NonZeroU32) {
+    pub fn get_screen_resolution(&self) -> (usize, usize) {
         return (
             self.config.horizontal_resolution,
             self.config.vertical_resolution,
@@ -174,8 +173,8 @@ impl GPU {
         mut x_pos: usize,
         mut y_pos: usize,
     ) -> Option<bool> {
-        let width = self.config.horizontal_resolution.get() as usize;
-        let height = self.config.vertical_resolution.get() as usize;
+        let width = self.config.horizontal_resolution as usize;
+        let height = self.config.vertical_resolution as usize;
 
         if self.config.wrap_pixels {
             x_pos %= width;

@@ -54,13 +54,13 @@ fn main() {
         comps.input_manager.clone(),
     );
 
-    let event_loop_result = EventLoop::new();
-    let event_loop;
-
-    match event_loop_result {
-        Ok(l) => event_loop = l,
-        Err(e) => eprintln!("Event loop creation failed with the following error: {e}"),
-    }
+    let event_loop = match EventLoop::new() {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("Event loop creation failed with the following error: {e}");
+            return;
+        }
+    };
 
     event_loop.set_control_flow(ControlFlow::Poll);
 

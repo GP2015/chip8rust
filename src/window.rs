@@ -10,36 +10,29 @@ use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
 use winit::event::{DeviceEvent, DeviceId, StartCause, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
-use winit::keyboard::Key;
 use winit::window::{Window, WindowButtons, WindowId};
 use winit_input_helper::WinitInputHelper;
 
 const WINDOW_TITLE: &str = "CHIP-8 Emulator";
-const BASE_RESOLUTION_SCALAR: NonZeroU32 = NonZeroU32::new(20).unwrap();
+const BASE_RESOLUTION_SCALAR: usize = 20;
 
 struct Size {
-    pub width: NonZeroU32,
-    pub height: NonZeroU32,
+    pub width: usize,
+    pub height: usize,
 }
 
 impl Size {
-    pub fn new(width: NonZeroU32, height: NonZeroU32) -> Self {
+    pub fn new(width: usize, height: usize) -> Self {
         Self { width, height }
     }
 
-    pub fn from_usize(width: usize, height: usize) -> Self {
-        Self {
-            width: NonZeroU32::new(width as u32).unwrap(),
-            height: NonZeroU32::new(height as u32).unwrap(),
-        }
+    pub fn get(&self) -> (usize, usize) {
+        return (self.width, self.height);
     }
 
-    pub fn get_width_usize(&self) -> usize {
-        return self.width.get() as usize;
-    }
-
-    pub fn get_height_usize(&self) -> usize {
-        return self.height.get() as usize;
+    pub fn set(&mut self, width: usize, height: usize) {
+        self.width = width;
+        self.height = height;
     }
 }
 
@@ -47,42 +40,42 @@ struct Position {
     pub index: usize,
     pub x: usize,
     pub y: usize,
-    width: usize,
+    screen_width: usize,
 }
 
 impl Position {
-    pub fn from_pos(x: usize, y: usize, width: usize) -> Self {
+    pub fn from_coords(x: usize, y: usize, screen_width: usize) -> Self {
         Self {
-            index: width * y + x,
+            index: screen_width * y + x,
             x,
             y,
-            width,
+            screen_width,
         }
     }
 
-    pub fn from_index(index: usize, width: usize) -> Self {
+    pub fn from_index(index: usize, screen_width: usize) -> Self {
         Self {
             index,
-            x: index % width,
-            y: index / width,
-            width,
+            x: index % screen_width,
+            y: index / screen_width,
+            screen_width,
         }
     }
 
     fn update_index(&mut self) {
-        self.index = self.width * self.y + self.x;
+        self.index = self.screen_width * self.y + self.x;
     }
 
     pub fn scale(mut self, factor: usize) -> Self {
-        self.width *= factor;
+        self.screen_width *= factor;
         self.x *= factor;
         self.y *= factor;
         self.update_index();
         return self;
     }
 
-    pub fn add_border(mut self, x_margin: usize, y_margin: usize) -> Self {
-        self.width += x_margin * 2;
+    pub fn add_padding(mut self, x_margin: usize, y_margin: usize) -> Self {
+        self.screen_width += x_margin * 2;
         self.x += x_margin;
         self.y += y_margin;
         self.update_index();
@@ -90,7 +83,7 @@ impl Position {
     }
 
     pub fn get_screen_width(&self) -> usize {
-        return self.width;
+        return self.screen_width;
     }
 }
 
@@ -100,8 +93,8 @@ pub struct WindowManager {
     input_manager: Arc<InputManager>,
     window: Option<Rc<Window>>,
     base_size: Size,
-    size_factor: NonZeroU32,
-    size: Size,
+    size_factor: usize,
+    window_size: Size,
     input: WinitInputHelper,
     context: Option<Context<Rc<Window>>>,
     surface: Option<Surface<Rc<Window>, Rc<Window>>>,
@@ -113,7 +106,7 @@ impl WindowManager {
 
         let base_size = Size::new(base_width, base_height);
 
-        let size = Size::new(
+        let window_size = Size::new(
             base_width.saturating_mul(BASE_RESOLUTION_SCALAR),
             base_height.saturating_mul(BASE_RESOLUTION_SCALAR),
         );
@@ -124,7 +117,7 @@ impl WindowManager {
             input_manager,
             window: None,
             base_size,
-            size,
+            window_size,
             size_factor: BASE_RESOLUTION_SCALAR,
             input: WinitInputHelper::new(),
             context: None,
@@ -139,54 +132,60 @@ impl WindowManager {
 
         let border_color = self.gpu.get_border_color();
 
-        let width_usize = self.size.get_width_usize();
-        let height_usize = self.size.get_height_usize();
-        let base_width_usize = self.base_size.get_width_usize();
-        let base_height_usize = self.base_size.get_height_usize();
-        let size_factor_usize = self.size_factor.get() as usize;
+        let (window_width, window_height) = self.window_size.get();
+        let (base_width, base_height) = self.base_size.get();
+        let size_factor = self.size_factor;
 
-        let x_margin = (width_usize - base_width_usize * size_factor_usize) / 2;
-        let y_margin = (height_usize - base_height_usize * size_factor_usize) / 2;
+        let x_margin = (window_width - base_width * size_factor) / 2;
+        let y_margin = (window_height - base_height * size_factor) / 2;
 
-        let mut render_buffer = surface.buffer_mut().unwrap();
         let gpu_buffer = self.gpu.get_framebuffer();
 
+        let mut render_buffer = match surface.buffer_mut() {
+            Ok(b) => b,
+            Err(e) => {
+                eprintln!("Retrieving the render buffer failed with the following error: {e}");
+                self.active.store(false, Ordering::Relaxed);
+                return;
+            }
+        };
+
         if x_margin > 0 {
-            render_square(
-                Position::from_pos(0, 0, width_usize),
-                Size::from_usize(x_margin, height_usize),
+            Self::render_square(
+                Position::from_coords(0, 0, window_width),
+                Size::new(x_margin, window_height),
                 border_color,
                 &mut render_buffer,
             );
 
-            render_square(
-                Position::from_pos(width_usize - x_margin, 0, width_usize),
-                Size::from_usize(x_margin, height_usize),
+            Self::render_square(
+                Position::from_coords(window_width - x_margin, 0, window_width),
+                Size::new(x_margin, window_height),
                 border_color,
                 &mut render_buffer,
             );
         }
 
         if y_margin > 0 {
-            render_square(
-                Position::from_pos(x_margin, 0, width_usize),
-                Size::from_usize(width_usize - (x_margin * 2), y_margin),
+            Self::render_square(
+                Position::from_coords(x_margin, 0, window_width),
+                Size::new(window_width - (x_margin * 2), y_margin),
                 border_color,
                 &mut render_buffer,
             );
 
-            render_square(
-                Position::from_pos(x_margin, height_usize - y_margin, width_usize),
-                Size::from_usize(width_usize - (x_margin * 2), y_margin),
+            Self::render_square(
+                Position::from_coords(x_margin, window_height - y_margin, window_width),
+                Size::new(window_width - (x_margin * 2), y_margin),
                 border_color,
                 &mut render_buffer,
             );
         }
 
         for pixel in 0..gpu_buffer.len() {
-            let pos = Position::from_index(pixel, base_width_usize)
-                .scale(size_factor_usize)
-                .add_border(x_margin, y_margin);
+            let pos = Position::from_index(pixel, base_width)
+                .scale(size_factor)
+                .add_padding(x_margin, y_margin);
 
             let size = Size::new(self.size_factor, self.size_factor);
 
@@ -195,47 +194,62 @@ impl WindowManager {
                 false => self.gpu.get_inactive_color(),
             };
 
-            render_square(pos, size, color, &mut render_buffer);
+            Self::render_square(pos, size, color, &mut render_buffer);
         }
 
-        render_buffer.present().unwrap();
+        if let Err(e) = render_buffer.present() {
+            eprintln!("Presenting the render buffer failed with the following error: {e}");
+            self.active.store(false, Ordering::Relaxed);
+            return;
+        }
+    }
+
+    fn render_square(
+        pos: Position,
+        size: Size,
+        color: u32,
+        buffer: &mut Buffer<'_, Rc<Window>, Rc<Window>>,
+    ) {
+        let pixel_row = vec![color; size.width];
+
+        for row in 0..size.height {
+            let start_index = pos.index + row * pos.get_screen_width();
+            buffer[start_index..start_index + size.width].copy_from_slice(&pixel_row);
+        }
     }
 
     fn update_size(&mut self, new_size: PhysicalSize<u32>) {
+        self.window_size
+            .set(new_size.width as usize, new_size.height as usize);
+
+        self.size_factor = cmp::min(
+            new_size.width as usize / self.base_size.width,
+            new_size.height as usize / self.base_size.height,
+        );
+
         let Some(surface) = self.surface.as_mut() else {
             return;
         };
 
-        let new_size = Size::from_usize(new_size.width as usize, new_size.height as usize);
+        let Some(new_size_width_nz) = NonZeroU32::new(new_size.width) else {
+            eprintln!("Failed to convert window width into NonZeroU32.");
+            self.active.store(false, Ordering::Relaxed);
+            return;
+        };
 
-        if surface.resize(new_size.width, new_size.height).is_err() {
+        let Some(new_size_height_nz) = NonZeroU32::new(new_size.height) else {
+            eprintln!("Failed to convert window height into NonZeroU32.");
+            self.active.store(false, Ordering::Relaxed);
+            return;
+        };
+
+        if let Err(e) = surface.resize(new_size_width_nz, new_size_height_nz) {
+            eprintln!(
+                "Resizing the SoftBuffer surface to the window size failed with the following error: {e}"
+            );
+            self.active.store(false, Ordering::Relaxed);
             return;
         }
-
-        self.size_factor = NonZeroU32::new(cmp::min(
-            new_size.get_width_usize() / self.base_size.get_width_usize(),
-            new_size.get_height_usize() / self.base_size.get_height_usize(),
-        ) as u32)
-        .unwrap();
-
-        self.size = new_size;
-    }
-}
-
-fn render_square(
-    pos: Position,
-    size: Size,
-    color: u32,
-    buffer: &mut Buffer<'_, Rc<Window>, Rc<Window>>,
-) {
-    let width = size.width.get() as usize;
-    let height = size.height.get() as usize;
-
-    let pixel_row = vec![color; width];
-
-    for row in 0..height {
-        let start_index = pos.index + row * pos.get_screen_width();
-        buffer[start_index..start_index + width].copy_from_slice(&pixel_row);
     }
 }
 
@@ -245,13 +259,16 @@ impl ApplicationHandler for WindowManager {
             return;
         }
 
-        let size = PhysicalSize::new(self.size.width.get(), self.size.height.get());
+        let window_size = PhysicalSize::new(
+            self.window_size.width as u32,
+            self.window_size.height as u32,
+        );
 
         let increment_size =
-            PhysicalSize::new(self.base_size.width.get(), self.base_size.height.get());
+            PhysicalSize::new(self.base_size.width as u32, self.base_size.height as u32);
 
         let attributes = Window::default_attributes()
-            .with_inner_size(size)
+            .with_inner_size(window_size)
             .with_title(WINDOW_TITLE)
             .with_enabled_buttons(WindowButtons::CLOSE | WindowButtons::MINIMIZE)
             .with_resize_increments(increment_size);
@@ -259,6 +276,8 @@ impl ApplicationHandler for WindowManager {
         let window = Rc::new(event_loop.create_window(attributes).unwrap());
         let context = Context::new(window.clone()).unwrap();
         let surface = Surface::new(&context, window.clone()).unwrap();
+
+        self.update_size(window_size);
 
         self.window = Some(window);
         self.context = Some(context);
@@ -293,17 +312,27 @@ impl ApplicationHandler for WindowManager {
             return;
         }
 
-        if let Some(new_size) = self.input.window_resized() {
-            self.update_size(new_size);
-        }
-
         self.input_manager.update_input(&self.input);
 
-        if let Some(window) = self.window.as_ref() {
-            if self.gpu.is_render_queued() {
-                self.gpu.dequeue_render();
-                window.request_redraw();
-            }
+        if let Some(new_size) = self.input.window_resized() {
+            self.update_size(new_size);
+            self.render();
+        }
+
+        let mut should_render = false;
+
+        if let Some(new_size) = self.input.window_resized() {
+            self.update_size(new_size);
+            should_render = true;
+        }
+
+        if self.gpu.is_render_queued() {
+            should_render = true;
+        }
+
+        if should_render && let Some(window) = self.window.as_ref() {
+            self.gpu.dequeue_render();
+            window.request_redraw();
         }
     }
 }
