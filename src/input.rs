@@ -103,7 +103,7 @@ impl InputManager {
         let mut newest_key_state = self.newest_key_state.lock().unwrap();
 
         while *newest_key_state != NewestKeyState::Finished && self.active.load(Ordering::Relaxed) {
-            let (newest_key_state, _) = self
+            (newest_key_state, _) = self
                 .newest_key_cvar
                 .wait_timeout(newest_key_state, CONDVAR_WAIT_TIMEOUT)
                 .unwrap();
