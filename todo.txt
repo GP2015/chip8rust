@@ -1,5 +1,4 @@
 Things to do:
-- Stop using busy-wait while waiting for input; too wasteful.
 - Distinguish between wrapping pixels and wrapping sprites (have settings for each).
 - Add sound functionality to the sound timer.
 - Add CH8+ quirks info to config.
