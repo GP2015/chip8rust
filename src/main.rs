@@ -8,7 +8,6 @@ mod ram;
 mod timer;
 mod window;
 
-use crate::config::Config;
 use crate::cpu::CPU;
 use crate::gpu::GPU;
 use crate::input::InputManager;
@@ -17,7 +16,7 @@ use crate::timer::{DelayTimer, SoundTimer};
 use crate::window::WindowManager;
 use clap::Parser;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use winit::event_loop::{ControlFlow, EventLoop};
 
@@ -47,21 +46,23 @@ fn main() {
         return;
     };
 
+    comps.ram.load_program(&args.program_path);
+
     let mut window_manager = WindowManager::new(
         comps.active.clone(),
         comps.gpu.clone(),
         comps.input_manager.clone(),
     );
 
-    let event_loop = EventLoop::new().unwrap();
-    event_loop.set_control_flow(ControlFlow::Poll);
+    let event_loop_result = EventLoop::new();
+    let event_loop;
 
-    if let Err(e) = event_loop.run_app(&mut window_manager) {
-        eprintln!(
-            "Window manager event loop failed with following error: {e}\nStopping emulator..."
-        );
-        return;
-    };
+    match event_loop_result {
+        Ok(l) => event_loop = l,
+        Err(e) => eprintln!("Event loop creation failed with the following error: {e}"),
+    }
+
+    event_loop.set_control_flow(ControlFlow::Poll);
 
     let mut handles = Vec::new();
 
@@ -69,11 +70,19 @@ fn main() {
     handles.push(thread::spawn(move || comps.sound_timer.run()));
 
     if comps.gpu.should_render_separately() {
-        let gpu = comps.gpu.clone();
-        handles.push(thread::spawn(move || gpu.run_separate_render()));
+        handles.push(thread::spawn(move || comps.gpu.run_separate_render()));
     }
 
     handles.push(thread::spawn(move || comps.cpu.run()));
+
+    if let Err(e) = event_loop.run_app(&mut window_manager) {
+        eprintln!("Window manager event loop failed with following error: {e}");
+        comps.active.store(false, Ordering::Release);
+    };
+
+    if cfg!(debug_assertions) && comps.active.load(Ordering::Relaxed) {
+        panic!("Event loop should not have exited while active is high.");
+    }
 
     for handle in handles {
         handle.join().unwrap();
@@ -83,33 +92,14 @@ fn main() {
 }
 
 fn create_components() -> Option<Components> {
-    let Some(config) = config::generate_configs() else {
-        return None;
-    };
-
+    let config = config::generate_configs()?;
     let active = Arc::new(AtomicBool::new(true));
-
-    let Some(delay_timer) = DelayTimer::try_new(active.clone(), config.delay_timer) else {
-        return None;
-    };
-
-    let Some(sound_timer) = SoundTimer::try_new(active.clone(), config.sound_timer) else {
-        return None;
-    };
-
-    let Some(ram) = RAM::try_new(active.clone(), config.ram) else {
-        return None;
-    };
-
-    let Some(gpu) = GPU::try_new(active.clone(), config.gpu) else {
-        return None;
-    };
-
-    let Some(input_manager) = InputManager::try_new(active.clone(), config.input) else {
-        return None;
-    };
-
-    let Some(cpu) = CPU::try_new(
+    let delay_timer = DelayTimer::try_new(active.clone(), config.delay_timer)?;
+    let sound_timer = SoundTimer::try_new(active.clone(), config.sound_timer)?;
+    let input_manager = InputManager::try_new(active.clone(), config.input)?;
+    let ram = RAM::try_new(active.clone(), config.ram)?;
+    let gpu = GPU::try_new(active.clone(), config.gpu)?;
+    let cpu = CPU::try_new(
         active.clone(),
         config.cpu,
         gpu.clone(),
@@ -117,9 +107,7 @@ fn create_components() -> Option<Components> {
         delay_timer.clone(),
         sound_timer.clone(),
         input_manager.clone(),
-    ) else {
-        return None;
-    };
+    )?;
 
     return Some(Components {
         active,

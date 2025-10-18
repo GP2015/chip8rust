@@ -1,5 +1,6 @@
 use std::thread;
 use std::time;
+use std::time::Instant;
 
 pub struct Limiter {
     delay: time::Duration,
@@ -9,7 +10,9 @@ pub struct Limiter {
 
 impl Limiter {
     pub fn new(freq: f64, catch_up: bool) -> Self {
-        assert!(freq > 0.0);
+        if freq <= 0.0 {
+            panic!("Frequency of limiters must be greater than 0.");
+        }
 
         Self {
             delay: time::Duration::from_secs_f64(1.0 / freq),
@@ -26,8 +29,18 @@ impl Limiter {
         }
 
         self.target = match self.catch_up {
-            true => self.target.checked_add(self.delay).unwrap(),
             false => time::Instant::now(),
+            true => match self.target.checked_add(self.delay) {
+                Some(t) => t,
+                None => {
+                    eprintln!("Failed to catch-up limiter.");
+                    time::Instant::now()
+                }
+            },
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.target = time::Instant::now();
     }
 }

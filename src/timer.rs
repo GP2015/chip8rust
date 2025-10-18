@@ -41,7 +41,8 @@ impl DelayTimer {
         while self.active.load(Ordering::Relaxed) {
             limiter.wait_if_early();
 
-            self.value
+            let _ = self
+                .value
                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {
                     if v > 0 { Some(v - 1) } else { None }
                 });
@@ -95,7 +96,8 @@ impl SoundTimer {
         while self.active.load(Ordering::Relaxed) {
             limiter.wait_if_early();
 
-            self.value
+            let _ = self
+                .value
                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {
                     if v > 0 { Some(v - 1) } else { None }
                 });

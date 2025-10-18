@@ -262,15 +262,15 @@ mod tests {
     use super::*;
 
     enum ConfigType {
-        CONSERVATIVE,
-        LIBERAL,
+        Conservative,
+        Liberal,
     }
 
     fn create_objects(cfg_type: ConfigType) -> (Arc<RAM>, Arc<AtomicBool>) {
         let active = Arc::new(AtomicBool::new(true));
         let ram = match cfg_type {
-            ConfigType::CONSERVATIVE => RAM::new_default_conservative(active.clone()),
-            ConfigType::LIBERAL => RAM::new_default_liberal(active.clone()),
+            ConfigType::Conservative => RAM::new_default_conservative(active.clone()),
+            ConfigType::Liberal => RAM::new_default_liberal(active.clone()),
         };
 
         return (ram, active);
@@ -282,7 +282,7 @@ mod tests {
         let program_path = String::from("test_load_program_to_memory_temp_file.txt");
         fs::write(&program_path, &program).unwrap();
 
-        let (ram, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (ram, active) = create_objects(ConfigType::Conservative);
 
         assert!(ram.load_program(&program_path));
 
@@ -297,7 +297,7 @@ mod tests {
 
     #[test]
     fn test_get_hex_digit_address() {
-        let (ram, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (ram, active) = create_objects(ConfigType::Conservative);
 
         let ideal_byte = ram.config.font_data[50];
 
@@ -309,7 +309,7 @@ mod tests {
 
     #[test]
     fn test_read_write_byte_to_memory() {
-        let (ram, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (ram, active) = create_objects(ConfigType::Conservative);
 
         let ideal_byte = 0x56;
         let addr = 0x789;
@@ -323,7 +323,7 @@ mod tests {
 
     #[test]
     fn test_read_bytes_from_memory() {
-        let (ram, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (ram, active) = create_objects(ConfigType::Conservative);
 
         let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
         let start_addr: u16 = 0x789;
@@ -340,7 +340,7 @@ mod tests {
 
     #[test]
     fn test_read_memory_with_successful_overflow() {
-        let (ram, active) = create_objects(ConfigType::LIBERAL);
+        let (ram, active) = create_objects(ConfigType::Liberal);
 
         let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
 
@@ -355,7 +355,7 @@ mod tests {
 
     #[test]
     fn test_read_memory_with_failed_overflow() {
-        let (ram, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (ram, active) = create_objects(ConfigType::Conservative);
 
         let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
 
@@ -368,7 +368,7 @@ mod tests {
 
     #[test]
     fn test_read_unaddressable_memory_with_successful_overflow() {
-        let (ram, active) = create_objects(ConfigType::LIBERAL);
+        let (ram, active) = create_objects(ConfigType::Liberal);
 
         let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
 
@@ -383,7 +383,7 @@ mod tests {
 
     #[test]
     fn test_write_bytes_to_memory() {
-        let (ram, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (ram, active) = create_objects(ConfigType::Conservative);
 
         let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
         let start_addr: u16 = 0x789;
@@ -403,7 +403,7 @@ mod tests {
 
     #[test]
     fn test_write_memory_with_successful_overflow() {
-        let (ram, active) = create_objects(ConfigType::LIBERAL);
+        let (ram, active) = create_objects(ConfigType::Liberal);
 
         let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
 
@@ -419,7 +419,7 @@ mod tests {
 
     #[test]
     fn test_write_memory_with_failed_overflow() {
-        let (ram, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (ram, active) = create_objects(ConfigType::Conservative);
 
         let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
 
@@ -429,7 +429,7 @@ mod tests {
 
     #[test]
     fn test_stack_push_pop() {
-        let (ram, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (ram, active) = create_objects(ConfigType::Conservative);
 
         for i in 1..=5 {
             assert!(ram.push_to_stack(i));
@@ -444,7 +444,7 @@ mod tests {
 
     #[test]
     fn test_stack_push_pop_with_successful_overflow() {
-        let (ram, active) = create_objects(ConfigType::LIBERAL);
+        let (ram, active) = create_objects(ConfigType::Liberal);
 
         for i in 1..=20 {
             assert!(ram.push_to_stack(i));
@@ -460,7 +460,7 @@ mod tests {
 
     #[test]
     fn test_stack_push_with_failed_overflow() {
-        let (ram, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (ram, active) = create_objects(ConfigType::Conservative);
 
         for i in 1..=16 {
             assert!(ram.push_to_stack(i));
@@ -472,7 +472,7 @@ mod tests {
 
     #[test]
     fn test_stack_pop_with_failed_overflow() {
-        let (ram, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (ram, active) = create_objects(ConfigType::Conservative);
 
         assert!(ram.pop_from_stack().is_none());
         assert!(!active.load(Ordering::Relaxed));

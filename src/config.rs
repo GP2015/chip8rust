@@ -1,9 +1,9 @@
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 use serde_with::serde_as;
 use std::fs;
+use std::num::NonZeroU32;
 use toml;
-use winit::keyboard::Key;
-use winit::keyboard::SmolStr;
+use winit::keyboard::{Key, SmolStr};
 
 const CONFIG_FILE_PATH: &str = "config.toml";
 
@@ -31,7 +31,7 @@ pub struct CPUConfig {
     pub allow_index_register_overflow: bool,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum RenderOccasion {
     Changes,
@@ -40,8 +40,11 @@ pub enum RenderOccasion {
 
 #[derive(Deserialize, Debug)]
 pub struct GPUConfig {
-    pub horizontal_resolution: u32,
-    pub vertical_resolution: u32,
+    pub pixel_color_when_active: u32,
+    pub pixel_color_when_inactive: u32,
+    pub screen_border_color: u32,
+    pub horizontal_resolution: NonZeroU32,
+    pub vertical_resolution: NonZeroU32,
     pub wrap_pixels: bool,
     pub render_occasion: RenderOccasion,
     pub render_frequency: f64,
@@ -93,17 +96,13 @@ pub fn generate_configs() -> Option<Config> {
         return None;
     };
 
-    let config: Result<Config, toml::de::Error> = toml::from_str(&raw_config);
+    let config: Config = toml::from_str(&raw_config)
+        .map_err(|err| {
+            eprintln!("Error: Could not parse config.toml ({})", err);
+        })
+        .ok()?;
 
-    if config.is_err() {
-        eprintln!(
-            "Error: Could not parse config.toml ({})",
-            config.err().unwrap().message()
-        );
-        return None;
-    };
-
-    return Some(config.ok().unwrap());
+    return Some(config);
 }
 
 #[cfg(test)]

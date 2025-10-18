@@ -51,6 +51,21 @@ allow_index_register_overflow = true
 # --- Graphics settings ---
 [gpu]
 
+# The different colors used by the renderer.
+# Specifies the color of the following:
+# - active pixels (i.e. pixels that are on)
+# - inactive pixels (i.e. pixels that are off)
+# - the screen border (i.e. anything outside the game area).
+# These must be unsigned 32-bit integers, with a max value of 0xFFFFFF.
+# Splitting one integer into 4 bytes, each byte has the following function:
+# - Highest byte: Must be 0
+# - Second byte:  Red channel
+# - Third byte:   Green channel
+# - Lowest byte:  Blue channel
+pixel_color_when_active = 0xFFFFFF
+pixel_color_when_inactive = 0x000000
+screen_border_color = 0x777777
+
 # The amount of pixels on the horizontal axis.
 # This must be an unsigned 32-bit integer value.
 # 64 in the CHIP-8; 128 in the SUPER-CHIP-8.
@@ -75,6 +90,7 @@ render_occasion = "changes"
 # The frequency at which to render the framebuffer to the screen.
 # Only applicable if not rendering at constant frequency (i.e. render_occasion = "frequency").
 # This must be a 64-bit floating-point value, greater than 0.
+# This is traditionally 60Hz, but can be any value.
 render_frequency = 60
 
 
@@ -84,12 +100,7 @@ render_frequency = 60
 # The keybindings for each of the 16 inputs.
 # These are ordered by the original keypad's hexadecimal naming convention.
 key_bindings = [
-    "1", "2", "3",
-    "q", "w", "e",
-    "a", "s", "d",
-         "x",
-    "z",      "c",
-    "4", "r", "f", "v"
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"
 ]
 
 

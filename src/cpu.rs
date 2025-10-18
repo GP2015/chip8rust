@@ -130,11 +130,15 @@ impl CPU {
                 return;
             };
 
+            // println!("{:#06x}", instruction.get_full());
+
             let Some(function) = self.decode_instruction(&instruction) else {
                 continue;
             };
 
-            self.execute_instruction(&instruction, &function);
+            if self.execute_instruction(&instruction, &function) {
+                limiter.reset();
+            }
         }
     }
 
@@ -160,8 +164,8 @@ impl CPU {
         instructions::get_instruction_function(&instruction)
     }
 
-    fn execute_instruction(&self, instruction: &Opcode, function: &InstructionFunction) {
-        function(&self, &instruction);
+    fn execute_instruction(&self, instruction: &Opcode, function: &InstructionFunction) -> bool {
+        return function(&self, &instruction);
     }
 
     pub fn get_pc_ref(&self) -> MutexGuard<'_, u16> {
@@ -308,8 +312,8 @@ mod tests {
     use super::*;
 
     enum ConfigType {
-        CONSERVATIVE,
-        LIBERAL,
+        Conservative,
+        Liberal,
     }
 
     fn create_objects(cfg_type: ConfigType) -> (Arc<CPU>, Arc<AtomicBool>) {
@@ -321,7 +325,7 @@ mod tests {
         let gpu = GPU::new_default_wrapping(active.clone());
         let input_manager = InputManager::new_default(active.clone());
         let cpu = match cfg_type {
-            ConfigType::CONSERVATIVE => CPU::new_default_all_false(
+            ConfigType::Conservative => CPU::new_default_all_false(
                 active.clone(),
                 gpu,
                 ram,
@@ -329,7 +333,7 @@ mod tests {
                 sound_timer,
                 input_manager,
             ),
-            ConfigType::LIBERAL => CPU::new_default_all_true(
+            ConfigType::Liberal => CPU::new_default_all_true(
                 active.clone(),
                 gpu,
                 ram,
@@ -344,7 +348,7 @@ mod tests {
 
     #[test]
     fn test_increment_program_counter() {
-        let (cpu, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (cpu, active) = create_objects(ConfigType::Conservative);
 
         let old_val = *cpu.pc.lock().unwrap();
 
@@ -358,7 +362,7 @@ mod tests {
 
     #[test]
     fn test_successful_program_counter_overflow() {
-        let (cpu, active) = create_objects(ConfigType::LIBERAL);
+        let (cpu, active) = create_objects(ConfigType::Liberal);
 
         for _ in 0..((0x1000 - PROGRAM_START_ADDRESS) / 2) {
             assert!(cpu.increment_pc());
@@ -370,7 +374,7 @@ mod tests {
 
     #[test]
     fn test_failed_program_counter_overflow() {
-        let (cpu, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (cpu, active) = create_objects(ConfigType::Conservative);
 
         for _ in 0..((0xFFF - PROGRAM_START_ADDRESS) / 2) {
             assert!(cpu.increment_pc());
@@ -382,7 +386,7 @@ mod tests {
 
     #[test]
     fn test_set_program_counter_manually() {
-        let (cpu, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (cpu, active) = create_objects(ConfigType::Conservative);
         cpu.set_pc(0x567);
         assert_eq!(0x567, *cpu.get_pc_ref());
         assert!(active.load(Ordering::Relaxed));
@@ -390,7 +394,7 @@ mod tests {
 
     #[test]
     fn test_get_program_counter_reference() {
-        let (cpu, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (cpu, active) = create_objects(ConfigType::Conservative);
 
         {
             let mut pc = cpu.get_pc_ref();
@@ -406,7 +410,7 @@ mod tests {
 
     #[test]
     fn test_set_index_register() {
-        let (cpu, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (cpu, active) = create_objects(ConfigType::Conservative);
         cpu.set_index_reg(0x567);
         assert_eq!(0x567, cpu.get_index_reg());
         assert!(active.load(Ordering::Relaxed));
@@ -414,7 +418,7 @@ mod tests {
 
     #[test]
     fn test_set_v_register() {
-        let (cpu, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (cpu, active) = create_objects(ConfigType::Conservative);
         cpu.set_v_reg(0x5, 0x67);
         assert_eq!(0x67, cpu.get_v_reg(0x5));
         assert!(active.load(Ordering::Relaxed));
@@ -422,7 +426,7 @@ mod tests {
 
     #[test]
     fn test_get_v_register_reference() {
-        let (cpu, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (cpu, active) = create_objects(ConfigType::Conservative);
 
         {
             let mut v = cpu.get_v_regs_ref();
@@ -436,7 +440,7 @@ mod tests {
 
     #[test]
     fn test_get_v_register_for_x_and_y() {
-        let (cpu, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (cpu, active) = create_objects(ConfigType::Conservative);
         cpu.set_v_reg(2, 0x34);
         cpu.set_v_reg(5, 0x67);
         assert_eq!((0x34, 0x67), cpu.get_v_reg_xy(2, 5));
@@ -445,7 +449,7 @@ mod tests {
 
     #[test]
     fn test_set_v_register_range() {
-        let (cpu, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (cpu, active) = create_objects(ConfigType::Conservative);
 
         let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
         cpu.set_v_reg_range(2, &ideal_bytes);
@@ -459,7 +463,7 @@ mod tests {
 
     #[test]
     fn test_get_v_register_range() {
-        let (cpu, active) = create_objects(ConfigType::CONSERVATIVE);
+        let (cpu, active) = create_objects(ConfigType::Conservative);
 
         let ideal_bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
 
