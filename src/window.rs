@@ -144,7 +144,7 @@ impl WindowManager {
         let mut render_buffer = match surface.buffer_mut() {
             Ok(b) => b,
             Err(e) => {
-                eprintln!("Retrieving the render buffer failed with the following error: {e}");
+                eprintln!("Error: Failed to retrieve the render buffer ({e}).");
                 self.active.store(false, Ordering::Relaxed);
                 return;
             }
@@ -198,7 +198,7 @@ impl WindowManager {
         }
 
         if let Err(e) = render_buffer.present() {
-            eprintln!("Presenting the render buffer failed with the following error: {e}");
+            eprintln!("Error: Failed to present the render buffer ({e}).");
             self.active.store(false, Ordering::Relaxed);
             return;
         }
@@ -232,21 +232,19 @@ impl WindowManager {
         };
 
         let Some(new_size_width_nz) = NonZeroU32::new(new_size.width) else {
-            eprintln!("Failed to convert window width into NonZeroU32.");
+            eprintln!("Error: Failed to convert window width into NonZeroU32.");
             self.active.store(false, Ordering::Relaxed);
             return;
         };
 
         let Some(new_size_height_nz) = NonZeroU32::new(new_size.height) else {
-            eprintln!("Failed to convert window height into NonZeroU32.");
+            eprintln!("Error: Failed to convert window height into NonZeroU32.");
             self.active.store(false, Ordering::Relaxed);
             return;
         };
 
         if let Err(e) = surface.resize(new_size_width_nz, new_size_height_nz) {
-            eprintln!(
-                "Resizing the SoftBuffer surface to the window size failed with the following error: {e}"
-            );
+            eprintln!("Error: Failed to resize the softbuffer surface ({e}).");
             self.active.store(false, Ordering::Relaxed);
             return;
         }

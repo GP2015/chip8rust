@@ -67,6 +67,7 @@ impl CPU {
             active,
             CPUConfig {
                 instructions_per_second: 700.0,
+                reset_flag_for_bitwise_operations: false,
                 use_new_shift_instruction: false,
                 use_new_jump_instruction: false,
                 set_flag_for_index_overflow: false,
@@ -98,6 +99,7 @@ impl CPU {
             active,
             CPUConfig {
                 instructions_per_second: 700.0,
+                reset_flag_for_bitwise_operations: true,
                 use_new_shift_instruction: true,
                 use_new_jump_instruction: true,
                 set_flag_for_index_overflow: true,

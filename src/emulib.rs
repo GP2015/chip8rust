@@ -33,7 +33,7 @@ impl Limiter {
             true => match self.target.checked_add(self.delay) {
                 Some(t) => t,
                 None => {
-                    eprintln!("Failed to catch-up limiter.");
+                    eprintln!("Error: Failed to catch-up limiter.");
                     time::Instant::now()
                 }
             },

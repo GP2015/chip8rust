@@ -1,15 +1,22 @@
 use serde::Deserialize;
 use serde_with::serde_as;
 use std::fs;
-use std::num::NonZeroU32;
 use toml;
 use winit::keyboard::{Key, SmolStr};
 
 const CONFIG_FILE_PATH: &str = "config.toml";
 
+#[derive(Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Preset {
+    CHIP8,
+    Custom,
+}
+
 #[serde_as]
 #[derive(Deserialize, Debug)]
 pub struct Config {
+    pub preset: Preset,
     pub cpu: CPUConfig,
     pub gpu: GPUConfig,
     pub input: InputConfig,
@@ -21,6 +28,7 @@ pub struct Config {
 #[derive(Deserialize, Debug)]
 pub struct CPUConfig {
     pub instructions_per_second: f64,
+    pub reset_flag_for_bitwise_operations: bool,
     pub use_new_shift_instruction: bool,
     pub use_new_jump_instruction: bool,
     pub set_flag_for_index_overflow: bool,
@@ -45,7 +53,8 @@ pub struct GPUConfig {
     pub screen_border_color: u32,
     pub horizontal_resolution: usize,
     pub vertical_resolution: usize,
-    pub wrap_pixels: bool,
+    pub wrap_sprite_positions: bool,
+    pub wrap_sprite_pixels: bool,
     pub render_occasion: RenderOccasion,
     pub render_frequency: f64,
 }
@@ -96,13 +105,30 @@ pub fn generate_configs() -> Option<Config> {
         return None;
     };
 
-    let config: Config = toml::from_str(&raw_config)
+    let mut config: Config = toml::from_str(&raw_config)
         .map_err(|err| {
-            eprintln!("Error: Could not parse config.toml ({})", err);
+            eprintln!("Error: Could not parse config.toml ({}).", err);
         })
         .ok()?;
 
+    match config.preset {
+        Preset::CHIP8 => enable_chip8_preset(&mut config),
+        Preset::Custom => (),
+    }
+
     return Some(config);
+}
+
+fn enable_chip8_preset(config: &mut Config) {
+    config.cpu.reset_flag_for_bitwise_operations = true;
+    config.cpu.use_new_shift_instruction = false;
+    config.cpu.use_new_jump_instruction = false;
+    config.cpu.set_flag_for_index_overflow = false;
+    config.cpu.move_index_with_reads = true;
+    config.gpu.horizontal_resolution = 64;
+    config.gpu.vertical_resolution = 32;
+    config.gpu.wrap_sprite_positions = true;
+    config.gpu.wrap_sprite_pixels = false;
 }
 
 #[cfg(test)]

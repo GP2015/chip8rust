@@ -235,6 +235,11 @@ fn i_8xy0_LD_Vx_Vy(this: &CPU, op: &Opcode) -> bool {
 fn i_8xy1_OR_Vx_Vy(this: &CPU, op: &Opcode) -> bool {
     let mut v = this.get_v_regs_ref();
     v[op.get_x_usize()] |= v[op.get_y_usize()];
+
+    if this.config.reset_flag_for_bitwise_operations {
+        v[0xF] = 0;
+    }
+
     return false;
 }
 
@@ -242,6 +247,11 @@ fn i_8xy1_OR_Vx_Vy(this: &CPU, op: &Opcode) -> bool {
 fn i_8xy2_AND_Vx_Vy(this: &CPU, op: &Opcode) -> bool {
     let mut v = this.get_v_regs_ref();
     v[op.get_x_usize()] &= v[op.get_y_usize()];
+
+    if this.config.reset_flag_for_bitwise_operations {
+        v[0xF] = 0;
+    }
+
     return false;
 }
 
@@ -249,6 +259,11 @@ fn i_8xy2_AND_Vx_Vy(this: &CPU, op: &Opcode) -> bool {
 fn i_8xy3_XOR_Vx_Vy(this: &CPU, op: &Opcode) -> bool {
     let mut v = this.get_v_regs_ref();
     v[op.get_x_usize()] ^= v[op.get_y_usize()];
+
+    if this.config.reset_flag_for_bitwise_operations {
+        v[0xF] = 0;
+    }
+
     return false;
 }
 
@@ -441,7 +456,7 @@ fn i_Fx55_LD_I_Vx(this: &CPU, op: &Opcode) -> bool {
         .write_bytes(&this.get_v_reg_range(0..=x as usize), *index);
 
     if this.config.move_index_with_reads {
-        this.increment_index_reg_ref_by(index, x as u16);
+        this.increment_index_reg_ref_by(index, x as u16 + 1);
     }
 
     return false;
@@ -459,7 +474,7 @@ fn i_Fx65_LD_Vx_I(this: &CPU, op: &Opcode) -> bool {
     this.set_v_reg_range(0, &bytes);
 
     if this.config.move_index_with_reads {
-        this.increment_index_reg_ref_by(index, x as u16);
+        this.increment_index_reg_ref_by(index, x as u16 + 1);
     }
 
     return false;

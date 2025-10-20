@@ -57,7 +57,7 @@ fn main() {
     let event_loop = match EventLoop::new() {
         Ok(l) => l,
         Err(e) => {
-            eprintln!("Event loop creation failed with the following error: {e}");
+            eprintln!("Error: Failed to create event loop ({e}).");
             return;
         }
     };
@@ -76,7 +76,7 @@ fn main() {
     handles.push(thread::spawn(move || comps.cpu.run()));
 
     if let Err(e) = event_loop.run_app(&mut window_manager) {
-        eprintln!("Window manager event loop failed with following error: {e}");
+        eprintln!("Error: Window manager event loop failed ({e}).");
         comps.active.store(false, Ordering::Release);
     };
 

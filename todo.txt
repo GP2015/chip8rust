@@ -1,4 +1,4 @@
 Things to do:
-- Distinguish between wrapping pixels and wrapping sprites (have settings for each).
+- Add proper quirk functionality.
 - Add sound functionality to the sound timer.
 - Add CH8+ quirks info to config.

@@ -1,4 +1,11 @@
 
+# The specific preset to use for settings.
+# Must be one of the below strings:
+# "chip8": The classic CHIP-8 for the COSMAC VIP by Joseph Weisbecker, 1977.
+# "custom": Allows customisation of the various fields, for non-standard programs.
+preset = "chip8"
+
+
 # --- CPU settings ---
 [cpu]
 
@@ -7,24 +14,30 @@
 # Any value works, but 700 is often recommended.
 instructions_per_second = 99999999
 
-# Whether to use the new shift instruction definition or not.
+# Whether to reset the flag register (VF) when performing bitwise operations.
+# This is overridden when using any preset other than "Custom".
 # This must be a boolean value (true or false).
-# Most programs use the old definition (if so, set this to false).
+reset_flag_for_bitwise_operations = false
+
+# Whether to use the new shift instruction definition or not.
+# This is overridden when using any preset other than "Custom".
+# This must be a boolean value (true or false).
 use_new_shift_instruction = false
 
 # Whether to use the new jump instruction definition or not.
+# This is overridden when using any preset other than "Custom".
 # This must be a boolean value (true or false).
-# Most programs use the old definition (if so, set this to false).
 use_new_jump_instruction = false
 
 # Whether to set the overflow flag (VF) high when the index register goes beyond the addressable range.
+# This is overridden when using any preset other than "Custom".
 # This must be a boolean value (true or false).
 # This rarely matters, but is sometimes required (if so, set this to true).
 set_flag_for_index_overflow = true
 
 # Whether to increment the index register as multiple bytes are read at once.
+# This is overridden when using any preset other than "Custom".
 # This must be a boolean value (true or false).
-# Most programs keep the register static (if so, set this to false).
 move_index_with_reads = false
 
 # Whether to allow the program counter to overflow.
@@ -67,6 +80,7 @@ pixel_color_when_inactive = 0x000000
 screen_border_color = 0x777777
 
 # The amount of pixels on the horizontal & vertical axis.
+# This is overridden when using any preset other than "Custom".
 # These must be unsigned integer values.
 # Some common resolutions (notated horizontal x vertical):
 # - 64x32 (used in the original CHIP-8)
@@ -75,13 +89,19 @@ screen_border_color = 0x777777
 horizontal_resolution = 64
 vertical_resolution = 32
 
-# Whether to wrap around to the other side of the screen when drawing off-screen pixels.
+# Whether to wrap sprite positions around to the other side of the screen when drawing at invalid locations.
+# Note that this wraps the sprite positions, not the individual pixels of the sprites.
+# This is overridden when using any preset other than "Custom".
 # This must be a boolean value (true or false).
-# Most programs use this functionality (if so, set this to true).
-wrap_pixels = true
+wrap_sprite_positions = true
+
+# Whether to wrap sprite pixels around to the other side of the screen when drawing off-screen pixels.
+# This is overridden when using any preset other than "Custom".
+# This must be a boolean value (true or false).
+wrap_sprite_pixels = true
 
 # When to render the framebuffer to the screen.
-# This must be a String. Can be one of the below options:
+# This must be a String. Must be one of the below options:
 # "changes": draws after all commands that change the framebuffer somehow; otherwise waits.
 # "frequency": draws at a constant frequency (specified in render_frequency)
 render_occasion = "changes"

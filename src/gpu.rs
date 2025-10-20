@@ -39,7 +39,8 @@ impl GPU {
                 screen_border_color: 0x777777,
                 horizontal_resolution: 64,
                 vertical_resolution: 32,
-                wrap_pixels: true,
+                wrap_sprite_positions: true,
+                wrap_sprite_pixels: true,
                 render_occasion: RenderOccasion::Changes,
                 render_frequency: 0.0,
             },
@@ -57,7 +58,8 @@ impl GPU {
                 screen_border_color: 0x777777,
                 horizontal_resolution: 64,
                 vertical_resolution: 32,
-                wrap_pixels: false,
+                wrap_sprite_positions: false,
+                wrap_sprite_pixels: false,
                 render_occasion: RenderOccasion::Changes,
                 render_frequency: 0.0,
             },
@@ -123,8 +125,19 @@ impl GPU {
             panic!("Error: Should not be draw a sprite larger than 16 bytes.");
         }
 
-        let x_pos = x_pos as usize;
-        let y_pos = y_pos as usize;
+        let mut x_pos = x_pos as usize;
+        let mut y_pos = y_pos as usize;
+
+        if self.config.wrap_sprite_positions {
+            x_pos %= self.config.horizontal_resolution;
+            y_pos %= self.config.vertical_resolution;
+        } else {
+            if x_pos >= self.config.horizontal_resolution
+                || y_pos >= self.config.vertical_resolution
+            {
+                return false;
+            }
+        }
 
         let mut collided = false;
         let mut framebuffer = self.framebuffer.lock().unwrap();
@@ -176,7 +189,7 @@ impl GPU {
         let width = self.config.horizontal_resolution as usize;
         let height = self.config.vertical_resolution as usize;
 
-        if self.config.wrap_pixels {
+        if self.config.wrap_sprite_pixels {
             x_pos %= width;
             y_pos %= height;
         } else {
