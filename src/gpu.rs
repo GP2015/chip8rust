@@ -1,13 +1,17 @@
 use crate::config::{GPUConfig, RenderOccasion};
 use crate::emulib::Limiter;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard};
+use std::time::Duration;
+
+const CONDVAR_WAIT_TIMEOUT: Duration = Duration::from_millis(100);
 
 pub struct GPU {
     active: Arc<AtomicBool>,
     config: GPUConfig,
     framebuffer: Mutex<Vec<bool>>,
-    render_queued: AtomicBool,
+    render_queued: Mutex<bool>,
+    render_queue_cvar: Condvar,
 }
 
 impl GPU {
@@ -23,9 +27,10 @@ impl GPU {
 
         return Some(Arc::new(Self {
             active,
-            framebuffer: Mutex::new(vec![false; framebuffer_size]),
-            render_queued: AtomicBool::new(false),
             config,
+            framebuffer: Mutex::new(vec![false; framebuffer_size]),
+            render_queued: Mutex::new(false),
+            render_queue_cvar: Condvar::new(),
         }));
     }
 
@@ -48,24 +53,24 @@ impl GPU {
         .unwrap()
     }
 
-    #[cfg(test)]
-    pub fn new_default_no_wrapping(active: Arc<AtomicBool>) -> Arc<Self> {
-        Self::try_new(
-            active,
-            GPUConfig {
-                pixel_color_when_active: 0xFFFFFF,
-                pixel_color_when_inactive: 0x000000,
-                screen_border_color: 0x777777,
-                horizontal_resolution: 64,
-                vertical_resolution: 32,
-                wrap_sprite_positions: false,
-                wrap_sprite_pixels: false,
-                render_occasion: RenderOccasion::Changes,
-                render_frequency: 0.0,
-            },
-        )
-        .unwrap()
-    }
+    // #[cfg(test)]
+    // pub fn new_default_no_wrapping(active: Arc<AtomicBool>) -> Arc<Self> {
+    //     Self::try_new(
+    //         active,
+    //         GPUConfig {
+    //             pixel_color_when_active: 0xFFFFFF,
+    //             pixel_color_when_inactive: 0x000000,
+    //             screen_border_color: 0x777777,
+    //             horizontal_resolution: 64,
+    //             vertical_resolution: 32,
+    //             wrap_sprite_positions: false,
+    //             wrap_sprite_pixels: false,
+    //             render_occasion: RenderOccasion::Changes,
+    //             render_frequency: 0.0,
+    //         },
+    //     )
+    //     .unwrap()
+    // }
 
     pub fn should_render_separately(&self) -> bool {
         return self.config.render_occasion == RenderOccasion::Frequency;
@@ -77,7 +82,7 @@ impl GPU {
         while self.active.load(Ordering::Relaxed) {
             limiter.wait_if_early();
 
-            self.render_queued.store(true, Ordering::Release);
+            self.queue_render();
         }
     }
 
@@ -105,18 +110,34 @@ impl GPU {
     }
 
     pub fn is_render_queued(&self) -> bool {
-        return self.render_queued.load(Ordering::Acquire);
+        return *self.render_queued.lock().unwrap();
+    }
+
+    pub fn queue_render(&self) {
+        *self.render_queued.lock().unwrap() = true;
     }
 
     pub fn dequeue_render(&self) {
-        self.render_queued.store(false, Ordering::Release);
+        *self.render_queued.lock().unwrap() = false;
+        self.render_queue_cvar.notify_all();
+    }
+
+    pub fn wait_for_render(&self) {
+        let mut render_queued = self.render_queued.lock().unwrap();
+
+        while *render_queued && self.active.load(Ordering::Relaxed) {
+            (render_queued, _) = self
+                .render_queue_cvar
+                .wait_timeout(render_queued, CONDVAR_WAIT_TIMEOUT)
+                .unwrap();
+        }
     }
 
     pub fn clear_framebuffer(&self) {
         self.framebuffer.lock().unwrap().fill(false);
 
         if self.config.render_occasion == RenderOccasion::Changes {
-            self.render_queued.store(true, Ordering::Release);
+            self.queue_render();
         }
     }
 
@@ -149,7 +170,7 @@ impl GPU {
         }
 
         if self.config.render_occasion == RenderOccasion::Changes {
-            self.render_queued.store(true, Ordering::Release);
+            self.queue_render();
         }
 
         return collided;
