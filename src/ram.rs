@@ -102,6 +102,7 @@ impl RAM {
         return self.config.font_starting_address + ((digit as u16) * 5);
     }
 
+    #[cfg(test)]
     pub fn write_byte(&self, val: u8, addr: u16) -> bool {
         let mut addr = addr as usize;
 
@@ -157,6 +158,7 @@ impl RAM {
         return true;
     }
 
+    #[cfg(test)]
     pub fn read_byte(&self, addr: u16) -> Option<u8> {
         let mut addr = addr as usize;
 

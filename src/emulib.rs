@@ -1,6 +1,5 @@
 use std::thread;
 use std::time;
-use std::time::Instant;
 
 pub struct Limiter {
     delay: time::Duration,

@@ -15,9 +15,9 @@ impl Opcode {
         }
     }
 
-    pub fn get_full(&self) -> u16 {
-        self.full
-    }
+    // pub fn get_full(&self) -> u16 {
+    //     self.full
+    // }
 
     pub fn get_addr(&self) -> u16 {
         self.full & 0x0FFF
@@ -369,6 +369,12 @@ fn i_Dxyn_DRW_Vx_Vy_nibble(this: &CPU, op: &Opcode) -> bool {
     let (x, y) = op.get_x_and_y_usize();
     let mut v = this.get_v_regs_ref();
     v[0xF] = this.gpu.draw_sprite(sprite, v[x], v[y]) as u8;
+
+    if this.config.limit_to_one_draw_per_frame {
+        this.gpu.wait_for_render();
+        return true;
+    }
+
     return false;
 }
 
