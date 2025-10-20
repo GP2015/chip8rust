@@ -1,8 +1,8 @@
 
 # The specific preset to use for settings.
-# Must be one of the below strings:
-# "chip8": The classic CHIP-8 for the COSMAC VIP by Joseph Weisbecker, 1977.
-# "custom": Allows customisation of the various fields, for non-standard programs.
+# This must be one of the Strings below:
+# "chip8": the classic CHIP-8 for the COSMAC VIP by Joseph Weisbecker, 1977.
+# "custom": allows customisation of the various fields, for non-standard programs.
 preset = "chip8"
 
 
@@ -39,6 +39,12 @@ set_flag_for_index_overflow = true
 # This is overridden when using any preset other than "Custom".
 # This must be a boolean value (true or false).
 move_index_with_reads = false
+
+# Whether to limit the number of draws to one per frame.
+# If true, then the CPU will wait until a render occurs before drawing the next sprite.
+# This is overridden when using any preset other than "Custom".
+# This must be a boolean value (true or false).
+limit_to_one_draw_per_frame = false
 
 # Whether to allow the program counter to overflow.
 # This must be a boolean value (true or false).
@@ -101,7 +107,7 @@ wrap_sprite_positions = true
 wrap_sprite_pixels = true
 
 # When to render the framebuffer to the screen.
-# This must be a String. Must be one of the below options:
+# This must be one of the Strings below:
 # "changes": draws after all commands that change the framebuffer somehow; otherwise waits.
 # "frequency": draws at a constant frequency (specified in render_frequency)
 render_occasion = "changes"
@@ -138,7 +144,7 @@ allow_stack_overflow = true
 
 # Whether to allow memory reads and writes to overflow.
 # This must be a boolean value (true or false).
- # Doesn't matter either way to most programs.
+# Doesn't matter either way to most programs.
 allow_heap_overflow = true
 
 # The index that the font data begins at, on the heap.
@@ -185,3 +191,15 @@ delay_timer_decrement_rate = 60
 # This must be a 64-bit floating-point value, greater than 0.
 # This should be 60 Hz for most programs.
 sound_timer_decrement_rate = 60
+
+# The frequency of the outputted audio tone.
+# This must be a 16-bit unsigned integer value.
+tone_frequency = 440
+
+# The waveform shape of the outputted audio tone.
+# This must be one of the Strings below:
+# "sine": a sine wave
+# "square": a square wave
+# "triangle": a triangle wave
+# "sawtooth": a sawtooth wave
+tone_waveform = "square"

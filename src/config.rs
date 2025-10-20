@@ -33,6 +33,7 @@ pub struct CPUConfig {
     pub use_new_jump_instruction: bool,
     pub set_flag_for_index_overflow: bool,
     pub move_index_with_reads: bool,
+    pub limit_to_one_draw_per_frame: bool,
     pub allow_program_counter_overflow: bool,
     pub use_true_randomness: bool,
     pub fake_randomness_seed: u64,
@@ -94,9 +95,20 @@ pub struct DelayTimerConfig {
     pub delay_timer_decrement_rate: f64,
 }
 
+#[derive(Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ToneWaveform {
+    Sine,
+    Square,
+    Triangle,
+    Sawtooth,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct SoundTimerConfig {
     pub sound_timer_decrement_rate: f64,
+    pub tone_frequency: f32,
+    pub tone_waveform: ToneWaveform,
 }
 
 pub fn generate_configs() -> Option<Config> {
@@ -125,10 +137,13 @@ fn enable_chip8_preset(config: &mut Config) {
     config.cpu.use_new_jump_instruction = false;
     config.cpu.set_flag_for_index_overflow = false;
     config.cpu.move_index_with_reads = true;
+    config.cpu.limit_to_one_draw_per_frame = true;
     config.gpu.horizontal_resolution = 64;
     config.gpu.vertical_resolution = 32;
     config.gpu.wrap_sprite_positions = true;
     config.gpu.wrap_sprite_pixels = false;
+    config.gpu.render_occasion = RenderOccasion::Frequency;
+    config.gpu.render_frequency = 60.0;
 }
 
 #[cfg(test)]
