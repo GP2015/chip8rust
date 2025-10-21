@@ -17,6 +17,7 @@ const CONDVAR_WAIT_TIMEOUT: Duration = Duration::from_millis(100);
 enum NewestKeyState {
     Finished,
     Requested,
+    Held,
     Sent,
 }
 
@@ -75,16 +76,19 @@ impl InputManager {
 
         for i in 0..NUMBER_OF_INPUTS {
             if input.key_pressed_logical(self.config.key_bindings[i].as_ref()) {
+                key_states[i] = true;
+
                 if *newest_key_state == NewestKeyState::Requested {
                     self.newest_key.store(i as u8, Ordering::Release);
+                    *newest_key_state = NewestKeyState::Held;
+                }
+            } else if input.key_released_logical(self.config.key_bindings[i].as_ref()) {
+                key_states[i] = false;
 
+                if *newest_key_state == NewestKeyState::Held {
                     *newest_key_state = NewestKeyState::Sent;
                     self.newest_key_cvar.notify_all();
                 }
-
-                key_states[i] = true;
-            } else if input.key_released_logical(self.config.key_bindings[i].as_ref()) {
-                key_states[i] = false;
             }
         }
 

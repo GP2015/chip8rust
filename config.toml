@@ -12,7 +12,7 @@ preset = "chip8"
 # The number of instructions to execute per second.
 # This must be a 64-bit floating-point value, greater than 0.
 # Any value works, but 700 is often recommended.
-instructions_per_second = 99999999
+instructions_per_second = 9999999
 
 # Whether to reset the flag register (VF) when performing bitwise operations.
 # This is overridden when using any preset other than "Custom".
