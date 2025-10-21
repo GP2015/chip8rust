@@ -1,4 +1,4 @@
 Things to do:
 - Add proper quirk functionality.
-- When waiting for the next key, wait until it is released.
 - Remove duplicate code in the timer script (use enums).
+- Implement a cached interpreter.
