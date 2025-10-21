@@ -144,6 +144,9 @@ fn enable_chip8_preset(config: &mut Config) {
     config.gpu.wrap_sprite_pixels = false;
     config.gpu.render_occasion = RenderOccasion::Frequency;
     config.gpu.render_frequency = 60.0;
+    config.ram.stack_size = 16;
+    config.delay_timer.delay_timer_decrement_rate = 60.0;
+    config.sound_timer.sound_timer_decrement_rate = 60.0;
 }
 
 #[cfg(test)]
